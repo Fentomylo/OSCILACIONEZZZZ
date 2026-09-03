@@ -9,31 +9,40 @@
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 body {
+  /* --wallpaper la fija main.js con la imagen importada (FONDO.jpg);
+     el degradado queda como respaldo si aún no cargó / no se definió. */
   background:
-    radial-gradient(circle at top, rgba(76, 127, 164, 0.28), transparent 42%),
-    linear-gradient(180deg, #0d2436 0%, #050c12 60%, #030608 100%);
+    radial-gradient(circle at top, rgba(76, 127, 164, 0.16), transparent 46%),
+    var(--wallpaper, linear-gradient(180deg, #0d2436 0%, #050c12 60%, #030608 100%));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   position: relative;
 }
+/* Textura de scanlines sutil, estilo CRT/aero, sin tapar el detalle de la foto */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background: repeating-linear-gradient(
     180deg,
-    rgba(255,255,255,0.03),
-    rgba(255,255,255,0.03) 1px,
+    rgba(255,255,255,0.025),
+    rgba(255,255,255,0.025) 1px,
     rgba(0,0,0,0) 1px,
     rgba(0,0,0,0) 3px
   );
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: 0.5;
+  opacity: 0.4;
 }
+/* Viñeta suave para dar profundidad y ayudar a que el HUD/panel resalten,
+   sin oscurecer demasiado la ilustración del fondo */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 58%, rgba(0,0,0,0.42) 100%);
+  background: radial-gradient(circle at center, transparent 62%, rgba(0,0,0,0.32) 100%);
   pointer-events: none;
 }
 canvas { display: block; width: 100%; height: 100%; }
@@ -150,9 +159,64 @@ canvas { display: block; width: 100%; height: 100%; }
   outline: none;
 }
 .desktop-icon .glyph {
-  font-size: 26px;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  margin-bottom: 1px;
 }
+
+/* ============================================================
+   Insignias "glossy" estilo Frutiger Aero / Windows Vista para
+   reemplazar los emoji planos: burbuja con degradado, brillo
+   superior tipo cristal y sombra — igual que los iconos del
+   dock/escritorio de Vista/7. El emoji real queda de glifo
+   centrado dentro.
+   ============================================================ */
+.icon-badge {
+  --badge-a: #8ec9ff;
+  --badge-b: #1f6fd6;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 11px;
+  background: linear-gradient(180deg, var(--badge-a) 0%, var(--badge-b) 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.9),
+    inset 0 -8px 10px rgba(0,0,0,0.2),
+    0 3px 6px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.14);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.icon-badge::after {
+  /* brillo superior tipo burbuja Aero */
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 10%;
+  right: 10%;
+  height: 42%;
+  border-radius: 50% 50% 40% 40% / 100% 100% 35% 35%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.icon-badge--sm {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.icon-badge--google    { --badge-a: #9ed0ff; --badge-b: #1f6fd6; }
+.icon-badge--files     { --badge-a: #ffe9a8; --badge-b: #e0980f; }
+.icon-badge--player    { --badge-a: #d3b3ff; --badge-b: #6a3ecf; }
+.icon-badge--paint     { --badge-a: #ffb0da; --badge-b: #e0348a; }
+.icon-badge--gmail     { --badge-a: #a6ecff; --badge-b: #0f8fc9; }
+.icon-badge--gallery   { --badge-a: #b3ecc0; --badge-b: #1f9e4a; }
+.icon-badge--messenger { --badge-a: #b6dfff; --badge-b: #2f7fd1; }
+.icon-badge--trash     { --badge-a: #e2e7ec; --badge-b: #6c7680; }
 
 .desktop-window {
   position: fixed;
@@ -201,45 +265,87 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 .desktop-window .window-content p { margin: 4px 0; }
 
+/* Barra de tareas Windows XP (tema Luna) */
 .taskbar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 600;
-  height: 40px;
+  height: 30px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 8px;
-  background: linear-gradient(180deg, #3d95f0 0%, #1a5fc4 48%, #0d3f95 100%);
-  border-top: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 -6px 18px rgba(0,0,0,0.35);
+  gap: 4px;
+  padding: 0 3px;
+  background: linear-gradient(180deg, #2a86fb 0%, #2467e0 4%, #1c5fd6 8%, #1650c4 50%, #0f3ea3 92%, #0a3798 100%);
+  border-top: 1px solid #4c96ff;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.4);
+  font-family: Tahoma, 'Segoe UI', sans-serif;
 }
 .start-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 14px 0 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.4);
-  background: linear-gradient(180deg, #7fe07f 0%, #2fa32f 55%, #1c7a1c 100%);
+  height: 28px;
+  margin-right: 2px;
+  padding: 0 12px 0 6px;
+  border-radius: 4px 12px 12px 4px;
+  border: 1px solid #1e5c15;
+  background: linear-gradient(180deg, #92e885 0%, #5fc34e 8%, #3ca82c 45%, #1f8a15 55%, #226a17 92%, #1a5811 100%);
   color: #fff;
   font-weight: 700;
   font-size: 13px;
   font-style: italic;
+  font-family: Tahoma, 'Segoe UI', sans-serif;
   cursor: pointer;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.6), inset 0 -1px 2px rgba(0,0,0,0.25);
 }
 .start-btn:hover { filter: brightness(1.08); }
-.clock {
+.start-btn span:last-child { padding-bottom: 1px; }
+
+/* Bandera de Windows de 4 colores, dibujada en CSS */
+.xp-flag {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  width: 15px;
+  height: 15px;
+  transform: skewX(-8deg);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45));
+  flex-shrink: 0;
+}
+.xp-flag span { border-radius: 1px; }
+.xp-flag span:nth-child(1) { background: #f6511f; }
+.xp-flag span:nth-child(2) { background: #7cb928; }
+.xp-flag span:nth-child(3) { background: #05a6f0; }
+.xp-flag span:nth-child(4) { background: #ffba08; }
+
+/* Bandeja del sistema, a la izquierda del reloj */
+.systray {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #eaf4ff;
+  padding: 3px 8px;
+  height: 22px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.06));
+  border-left: 1px solid rgba(0,0,0,0.35);
+  box-shadow: inset 1px 0 0 rgba(255,255,255,0.15);
   font-size: 12px;
+}
+.clock {
+  padding: 4px 10px;
+  height: 22px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.06));
+  border-left: 1px solid rgba(0,0,0,0.35);
+  color: #eaf4ff;
+  font-size: 11px;
+  font-family: Tahoma, 'Segoe UI', sans-serif;
   font-variant-numeric: tabular-nums;
 }
 

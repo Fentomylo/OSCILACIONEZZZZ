@@ -23,8 +23,15 @@ export function createParameters() {
     hatShakeAmount: 0.055,   // amplitud del jitter de posición, en unidades de mundo
     hatShakeDecay: 16,       // qué tan rápido decae el temblor (más alto = más nervioso/corto)
 
-    // --- Atributos dinámicos para Paint ---
-    paintDensity: 0.0,
+    // --- Atributos dinámicos para Paint: lo que el agente "lee" del dibujo
+    // en tiempo real (ver initPaintCanvas en labPanel.js) ---
+    paint: {
+      density: 0,     // 0..1 — fracción de tinta sobre el total del lienzo (cuánto se ha dibujado)
+      fillRatio: 0,   // 0..1 — qué tan "sólido" es el trazo dentro de su caja: bajo = línea/garabato delgado, alto = mancha/forma rellena
+      colorCount: 0,  // colores distintos usados (riqueza armónica)
+      nx: 0.5,        // 0..1 — posición X normalizada del último punto dibujado
+      ny: 0.5         // 0..1 — posición Y normalizada del último punto dibujado
+    },
 
     // --- Efectos por tipo de ventana ---
     windowEffects: {

@@ -75,7 +75,7 @@ function buildStartMenuContent(container, { params, onReset, onPreset, onPauseCh
     <div style="width: 44px; height: 44px; border: 2px solid #fff; border-radius: 4px; overflow: hidden; background: #000; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.5);">
       <img src="${brunoImg}" style="width: 100%; height: 100%; object-fit: cover;" alt="Avatar" />
     </div>
-    <div style="font-size: 15px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.6); letter-spacing: 0.3px;">Family Cutajar</div>
+    <div style="font-size: 15px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.6); letter-spacing: 0.3px;">Tomy</div>
   `;
   container.append(userHeader);
 
@@ -249,9 +249,22 @@ function buildStartMenuContent(container, { params, onReset, onPreset, onPauseCh
   return refreshers;
 }
 
+// Clase de insignia "glossy" (Frutiger Aero / Vista) por tipo de ventana —
+// ver .icon-badge en styles.css
+const ICON_BADGE_CLASS = {
+  google: 'icon-badge--google',
+  files: 'icon-badge--files',
+  player: 'icon-badge--player',
+  paint: 'icon-badge--paint',
+  gmail: 'icon-badge--gmail',
+  gallery: 'icon-badge--gallery',
+  messenger: 'icon-badge--messenger',
+  trash: 'icon-badge--trash'
+};
+
 const WINDOW_DEFS = {
   google: {
-    title: 'Google Browser', icon: '🌐',
+    title: 'Google', icon: '🌐',
     body: `
       <div style="font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px; font-weight: bold; color: #000; background: #f0f0f0; display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 0 0 6px 6px; overflow: hidden; box-sizing: border-box; user-select: none;">
         
@@ -312,7 +325,7 @@ const WINDOW_DEFS = {
     `
   },
   files: {
-    title: 'Bibliotecas - Explorador', icon: '🗂️',
+    title: 'Explorador de archivos', icon: '🗂️',
     body: `
       <div style="font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px; font-weight: bold; color: #000; background: #f0f0f0; display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 0 0 6px 6px; overflow: hidden; box-sizing: border-box; user-select: none;">
         
@@ -465,7 +478,7 @@ const WINDOW_DEFS = {
     `
   },
   paint: {
-    title: 'untitled - Paint', icon: '🎨',
+    title: 'Paint', icon: '🎨',
     body: `
       <div style="font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px; font-weight: bold; color: #000; background: #f0f0f0; display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 0 0 6px 6px; overflow: hidden; box-sizing: border-box; user-select: none;">
         
@@ -537,7 +550,7 @@ const WINDOW_DEFS = {
     `
   },
   gmail: {
-    title: 'Inbox - Windows Mail', icon: '✉️',
+    title: 'Mail', icon: '✉️',
     body: `
       <div style="font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px; font-weight: bold; color: #000; background: #f0f0f0; display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 0 0 4px 4px; overflow: hidden; box-sizing: border-box;">
         
@@ -896,7 +909,7 @@ function initPlayerUI(container) {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function initPaintCanvas(container, params) {
+function initPaintCanvas(container, params, paintAudio) {
   const canvas = container.querySelector('.paint-canvas');
   const colorPicker = container.querySelector('#paint-color');
   const clearBtn = container.querySelector('#paint-clear');
@@ -909,6 +922,10 @@ function initPaintCanvas(container, params) {
   let currentTool = 'pencil';
   let startX = 0, startY = 0;
   let snapshot = null;
+
+  // Colores distintos usados desde el último "Limpiar" — le da "riqueza"
+  // al agente (más voces/desafinado, ver triggerBeatAccent en main.js).
+  const usedColors = new Set();
 
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -932,13 +949,52 @@ function initPaintCanvas(container, params) {
     });
   });
 
-  function updatePaintDensity() {
+  // Analiza el lienzo completo: además de la densidad de tinta, calcula la
+  // caja delimitadora de todo lo dibujado y qué fracción de esa caja está
+  // rellena. Un trazo delgado (línea, garabato, contorno de círculo) da un
+  // fillRatio bajo; una mancha o forma pintada sólida da uno alto. Así el
+  // agente "entiende" si lo que hay es un dibujo suelto o una forma sólida,
+  // en vez de reaccionar igual a cualquier cosa que se dibuje.
+  function analyzeDrawing() {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
     let filled = 0;
-    for (let i = 3; i < imgData.data.length; i += 4) {
-      if (imgData.data[i] > 10) filled++;
+    let minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1;
+
+    for (let y = 0; y < canvas.height; y++) {
+      const rowOffset = y * canvas.width;
+      for (let x = 0; x < canvas.width; x++) {
+        const a = data[(rowOffset + x) * 4 + 3];
+        if (a > 10) {
+          filled++;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
     }
-    params.paintDensity = filled / (canvas.width * canvas.height);
+
+    const total = canvas.width * canvas.height;
+    const density = filled / total;
+    let fillRatio = 0;
+    if (filled > 0 && maxX >= minX && maxY >= minY) {
+      const bboxArea = (maxX - minX + 1) * (maxY - minY + 1);
+      fillRatio = filled / bboxArea;
+    }
+
+    params.paint.density = density;
+    params.paint.fillRatio = fillRatio;
+    params.paint.colorCount = usedColors.size;
+  }
+
+  // Actualiza SOLO la posición en vivo del último punto dibujado (barato,
+  // sin volver a escanear el lienzo) — es lo que el agente usa para
+  // "seguir" el trazo mientras se dibuja, como si leyera dónde está la
+  // punta del lápiz ahora mismo.
+  function updateLivePosition(x, y) {
+    params.paint.nx = Math.max(0, Math.min(1, x / canvas.width));
+    params.paint.ny = Math.max(0, Math.min(1, y / canvas.height));
   }
 
   function hexToRgba(hex) {
@@ -992,7 +1048,8 @@ function initPaintCanvas(container, params) {
     }
 
     ctx.putImageData(imgData, 0, 0);
-    updatePaintDensity();
+    updateLivePosition(startX, startY);
+    analyzeDrawing();
   }
 
   canvas.addEventListener('mousedown', (e) => {
@@ -1003,13 +1060,25 @@ function initPaintCanvas(container, params) {
 
     const activeColor = colorPicker.value;
 
+    // El lápiz/pincel/goma/figura ES el instrumento: al bajar el mouse se
+    // "ataca" una nota que luego se dobla en vivo mientras te mueves (ver
+    // mousemove) y se suelta al soltar el botón. fill/picker no dibujan en
+    // continuo, así que se resuelven aparte con su propio pulso corto.
+    if (currentTool !== 'fill' && currentTool !== 'picker') {
+      paintAudio?.onStart?.(startX / canvas.width, startY / canvas.height, activeColor, currentTool);
+    }
+
     if (currentTool === 'pencil' || currentTool === 'brush' || currentTool === 'eraser') {
       ctx.beginPath();
       ctx.moveTo(startX, startY);
+      if (currentTool !== 'eraser') usedColors.add(activeColor);
     } else if (currentTool === 'fill') {
+      usedColors.add(activeColor);
       floodFill(startX, startY, activeColor);
       drawing = false;
+      paintAudio?.onFill?.(startX / canvas.width, startY / canvas.height, activeColor);
     } else if (currentTool === 'rect' || currentTool === 'ellipse') {
+      usedColors.add(activeColor);
       snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     } else if (currentTool === 'picker') {
       const p = ctx.getImageData(startX, startY, 1, 1).data;
@@ -1062,24 +1131,33 @@ function initPaintCanvas(container, params) {
       ctx.stroke();
     }
 
-    updatePaintDensity();
+    updateLivePosition(x, y);
+    analyzeDrawing();
+    paintAudio?.onMove?.(params.paint.nx, params.paint.ny, activeColor, currentTool);
   });
 
   window.addEventListener('mouseup', () => {
     if (drawing) {
       drawing = false;
-      updatePaintDensity();
+      analyzeDrawing();
+      paintAudio?.onEnd?.();
     }
   });
 
   clearBtn.addEventListener('click', () => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    params.paintDensity = 0;
+    usedColors.clear();
+    params.paint.density = 0;
+    params.paint.fillRatio = 0;
+    params.paint.colorCount = 0;
+    params.paint.nx = 0.5;
+    params.paint.ny = 0.5;
+    paintAudio?.onEnd?.();
   });
 }
 
-export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWindowMove, onAgentWindowToggle }) {
+export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWindowMove, onAgentWindowToggle, onWindowClosed, paintAudio }) {
   const openWindows = new Map();
   let windowCounter = 0;
   let refreshers = [];
@@ -1205,15 +1283,20 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     el.style.transformOrigin = 'bottom center';
     el.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.22s ease';
 
-    // Start Menu entry animation from the start button (bottom-left corner)
+    // Start Menu entry animation from the start button (bottom-left corner).
+    // Se ancla con `bottom` al alto real de la barra de tareas para que
+    // quede SIEMPRE pegado a ella, como el menú Start de Windows —
+    // ya no depende de restar un offset fijo a innerHeight.
     if (isLab && startButtonEl) {
       const btnRect = startButtonEl.getBoundingClientRect();
       const targetW = 410;
-      const targetH = 480;
+      const taskbarH = (bar && bar.offsetHeight) || 30;
+      const targetH = Math.min(480, window.innerHeight - taskbarH - 10);
       const targetLeft = btnRect.left;
 
       el.style.left = `${btnRect.left}px`;
-      el.style.top = `${window.innerHeight - 35}px`;
+      el.style.top = 'auto';
+      el.style.bottom = `${taskbarH}px`;
       el.style.width = '40px';
       el.style.height = '40px';
       el.style.opacity = '0';
@@ -1222,7 +1305,7 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
 
       setTimeout(() => {
         el.style.left = `${Math.max(10, targetLeft)}px`;
-        el.style.top = `${Math.max(10, window.innerHeight - targetH - 45)}px`;
+        el.style.bottom = `${taskbarH}px`;
         el.style.width = `${targetW}px`;
         el.style.height = `${targetH}px`;
         el.style.opacity = '1';
@@ -1306,7 +1389,7 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     }
 
     if (type === 'paint') {
-      initPaintCanvas(content, params);
+      initPaintCanvas(content, params, paintAudio);
     } else if (type === 'player') {
       initPlayerUI(content);
     }
@@ -1374,7 +1457,8 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
         text-overflow: ellipsis;
         box-shadow: inset 0 1px 1px rgba(255,255,255,0.4);
       `;
-      taskbarTab.innerHTML = `<span>${def.icon}</span> <span style="overflow: hidden; text-overflow: ellipsis;">${title || def.title}</span>`;
+      const tabBadgeClass = ICON_BADGE_CLASS[type] || '';
+      taskbarTab.innerHTML = `<span class="icon-badge icon-badge--sm ${tabBadgeClass}">${def.icon}</span> <span style="overflow: hidden; text-overflow: ellipsis;">${title || def.title}</span>`;
       
       taskbarTab.addEventListener('click', () => {
         if (isMinimized) {
@@ -1403,7 +1487,7 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     if (entry.taskbarTab) entry.taskbarTab.remove();
     entry.el.remove();
     openWindows.delete(id);
-    if (onAgentWindowToggle) onAgentWindowToggle(id, false);
+    if (onWindowClosed) onWindowClosed(id);
   }
 
   function getWindowAt(clientX, clientY) {
@@ -1426,9 +1510,10 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
 
   Object.keys(WINDOW_DEFS).forEach((type) => {
     const def = WINDOW_DEFS[type];
+    const badgeClass = ICON_BADGE_CLASS[type] || '';
     const icon = document.createElement('button');
     icon.className = 'desktop-icon';
-    icon.innerHTML = `<span class="glyph">${def.icon}</span><span>${def.title}</span>`;
+    icon.innerHTML = `<span class="glyph icon-badge ${badgeClass}">${def.icon}</span><span>${def.title}</span>`;
     icon.addEventListener('click', () => openWindow(type));
     desktop.append(icon);
   });
@@ -1453,21 +1538,9 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
   bar.className = 'taskbar';
   const startBtn = document.createElement('button');
   startBtn.className = 'start-btn';
-  startBtn.innerHTML = '🪟 <span>start</span>';
-  startBtn.style.cssText = `
-    background: linear-gradient(180deg, #3c822e 0%, #225917 50%, #17420e 100%);
-    border: 1px solid #5aa846;
-    border-radius: 14px;
-    color: #fff;
-    font-weight: bold;
-    font-style: italic;
-    padding: 2px 14px;
-    cursor: pointer;
-    box-shadow: inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
+  startBtn.innerHTML = `
+    <span class="xp-flag"><span></span><span></span><span></span><span></span></span>
+    <span>start</span>
   `;
   startBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1475,6 +1548,10 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
   });
 
   bar.append(startBtn, taskbarAppsContainer);
+
+  const tray = document.createElement('div');
+  tray.className = 'systray';
+  tray.innerHTML = `<span title="Volumen">🔊</span><span title="Red">📶</span>`;
 
   const clock = document.createElement('div');
   clock.className = 'clock';
@@ -1485,7 +1562,7 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
   tick();
   setInterval(tick, 1000 * 15);
 
-  bar.append(clock);
+  bar.append(tray, clock);
   document.body.append(bar);
 
   // Click outside to close start menu

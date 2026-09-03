@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as Tone from 'tone';
 import './styles.css';
+import FONDO from './FONDO.jpg';
 
 import { createParameters } from './simulation/parameters.js';
 import { createSimulation } from './simulation/createSimulation.js';
@@ -79,6 +80,132 @@ function buildAmbientSynth(config) {
   }
 }
 
+// Convierte un color hex en cents de detune (-20..+20), usando el matiz
+// (hue). Así cada color no solo se ve distinto en el lienzo, también suena
+// ligeramente distinto — el color es parte del "timbre" del dibujo.
+function hexToHueDetune(hex) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.slice(0, 2), 16) / 255;
+  const g = parseInt(c.slice(2, 4), 16) / 255;
+  const b = parseInt(c.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  const d = max - min;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return (h / 360) * 40 - 20;
+}
+
+// El Paint tiene DOS modos, y nunca los dos a la vez:
+//  - Sin ningún agente adentro: este instrumento libre suena en vivo con tu
+//    trazo (tipo theremin/plotter angelical), para que "algo" responda igual.
+//  - Con un agente adentro: el instrumento libre se calla por completo y
+//    cede el turno al sistema YA establecido (triggerBeatAccent + el caso
+//    'paint' del setInterval de abajo), que es el agente "interpretando" el
+//    dibujo a su propio ritmo Kuramoto — eso no se toca, se respeta tal cual.
+// hasAgentInPaint() decide cuál de los dos está activo en cada instante.
+function createPaintInstrument(destinationBus, hasAgentInPaint) {
+  const SCALE = ['Db3', 'Eb3', 'F3', 'Ab3', 'Bb3', 'Db4', 'Eb4', 'F4', 'Ab4', 'Bb4', 'Db5', 'Eb5', 'F5', 'Ab5', 'Bb5', 'Db6'];
+
+  const filter = new Tone.Filter(3200, 'lowpass');
+  const panner = new Tone.Panner(0);
+  const gain = new Tone.Gain(0);
+
+  // Voz principal: un pad suave tipo coro etéreo (nada de dientes de
+  // sierra), para que combine con el aire Frutiger Aero/angelical del
+  // resto del instrumento en vez de sonar "sintetizador aparte".
+  const synth = new Tone.Synth({
+    oscillator: { type: 'fatsine', count: 3, spread: 25 },
+    envelope: { attack: 0.22, decay: 0.4, sustain: 0.55, release: 1.8 },
+    volume: -5
+  });
+  synth.chain(filter, panner, gain, destinationBus);
+
+  // Capa de brillo: un destello de campana FM que se dispara junto al ataque
+  // de cada trazo o relleno — como polvo de estrellas encima del pad. Esto
+  // es lo que le da el carácter "angelical" que pediste.
+  const shimmer = new Tone.FMSynth({
+    harmonicity: 4.0, modulationIndex: 2.2,
+    oscillator: { type: 'sine' }, modulation: { type: 'sine' },
+    envelope: { attack: 0.005, decay: 1.1, sustain: 0, release: 0.8 },
+    volume: -13
+  });
+  const shimmerPanner = new Tone.Panner(0);
+  shimmer.chain(shimmerPanner, destinationBus);
+
+  let active = false;
+
+  function noteFromNX(nx) {
+    const idx = Math.max(0, Math.min(SCALE.length - 1, Math.floor(nx * SCALE.length)));
+    return SCALE[idx];
+  }
+
+  function shape(nx, ny, colorHex, rampTime) {
+    filter.frequency.rampTo(900 + (1 - ny) * 6500, rampTime);
+    panner.pan.rampTo(nx * 2 - 1, rampTime);
+    synth.detune.rampTo(hexToHueDetune(colorHex), rampTime);
+  }
+
+  function sparkle(note, nx) {
+    shimmerPanner.pan.rampTo(nx * 2 - 1, 0.02);
+    // destello una octava + quinta arriba de la nota base (19 semitonos)
+    const bright = Tone.Frequency(note).transpose(19).toFrequency();
+    shimmer.triggerAttackRelease(bright, '2n', undefined, 0.5);
+  }
+
+  function attack(nx, ny, colorHex, tool) {
+    const note = noteFromNX(nx);
+    const isEraser = tool === 'eraser';
+    synth.volume.rampTo(isEraser ? -17 : -5, 0.05);
+    shape(nx, ny, colorHex, 0.02);
+    synth.triggerAttack(note, undefined, isEraser ? 0.3 : 0.8);
+    if (!isEraser) sparkle(note, nx);
+    gain.gain.rampTo(1, 0.06);
+    active = true;
+  }
+
+  function release() {
+    active = false;
+    synth.triggerRelease();
+    gain.gain.rampTo(0, 0.6);
+  }
+
+  return {
+    onStart(nx, ny, colorHex, tool) {
+      if (hasAgentInPaint()) return; // hay un agente adentro: es su turno de interpretar
+      attack(nx, ny, colorHex, tool);
+    },
+    onMove(nx, ny, colorHex, tool) {
+      if (hasAgentInPaint()) {
+        if (active) release(); // un agente entró a mitad del trazo: le cede el instrumento
+        return;
+      }
+      if (!active) { attack(nx, ny, colorHex, tool); return; }
+      const note = noteFromNX(nx);
+      synth.frequency.rampTo(Tone.Frequency(note).toFrequency(), 0.09);
+      shape(nx, ny, colorHex, 0.1);
+    },
+    onEnd() {
+      if (!active) return;
+      release();
+    },
+    onFill(nx, ny, colorHex) {
+      if (hasAgentInPaint()) return;
+      const note = noteFromNX(nx);
+      shape(nx, ny, colorHex, 0.02);
+      gain.gain.rampTo(1, 0.03);
+      synth.triggerAttackRelease(note, '4n', undefined, 0.7);
+      sparkle(note, nx);
+      setTimeout(() => gain.gain.rampTo(0, 0.5), 220);
+    }
+  };
+}
+
 function createSoundEngine(params, nodes) {
   let started = false;
 
@@ -91,6 +218,13 @@ function createSoundEngine(params, nodes) {
 
   // Efecto Chorus dedicado para la Galería de Fotos (multiplica el sonido como un coro rico)
   const galleryChorus = new Tone.Chorus({ frequency: 2.5, delayTime: 40, depth: 0.8, wet: 0.9 }).connect(aeroChorus);
+
+  // Vive en el mismo bus aero (chorus→delay→reverb→master) que los agentes,
+  // así el trazo suena como parte del mismo mundo sonoro y no como algo pegado aparte.
+  const paintInstrument = createPaintInstrument(
+    aeroChorus,
+    () => nodes.some((n) => n.windowType === 'paint' && !n.minimized)
+  );
 
   const chains = [];
   for (let i = 0; i < params.nodeCount; i++) {
@@ -162,9 +296,12 @@ function createSoundEngine(params, nodes) {
           chain.filter.frequency.rampTo(9000, 0.2); 
           break;
         case 'paint':
-          chain.volumeNode.gain.rampTo(1.2, 0.2);
-          // Modulamos la frecuencia del filtro del agente basado en cuánto hay pintado en el canvas
-          chain.filter.frequency.rampTo(2000 + (params.paintDensity || 0) * 8000, 0.2);
+          // El eje Y de lo último dibujado controla el brillo del filtro
+          // (arriba = brillante, abajo = oscuro, como un plotter/theremin);
+          // la cantidad de tinta sube el volumen. Base subida (antes 0.55)
+          // porque sonaba muy bajito frente al resto de las ventanas.
+          chain.volumeNode.gain.rampTo(1.05 + Math.min(1, (params.paint.density || 0) * 20) * 0.9, 0.15);
+          chain.filter.frequency.rampTo(700 + (1 - params.paint.ny) * 9000, 0.15);
           break;
         case 'gmail':
           chain.volumeNode.gain.rampTo(1.0, 0.2);
@@ -195,26 +332,45 @@ function createSoundEngine(params, nodes) {
     const config = chain.config;
     // Si está en la galería, se realza el volumen para acentuar el efecto chorus múltiple
     const velocityMultiplier = (node.windowType === 'gallery') ? 1.3 : 1.0;
-    const velocity = node.state === 'dragging' ? 1.0 : Math.min((0.4 + params.order * 0.5 + node.kick * 0.3) * velocityMultiplier, 1.0);
+    let velocity = node.state === 'dragging' ? 1.0 : Math.min((0.4 + params.order * 0.5 + node.kick * 0.3) * velocityMultiplier, 1.0);
+
+    // En Paint, la nota no avanza secuencialmente: la elige la posición X
+    // de lo último dibujado, como recorrer un teclado de izquierda a
+    // derecha con el trazo. Así el "sonido" realmente sigue el dibujo en
+    // vez de solo acelerarse con cuánta tinta hay. Más tinta = más volumen.
+    let selector = chain.noteCounter;
+    if (node.windowType === 'paint') {
+      // antes: Math.floor(nx * 9973) % length saltaba casi al azar con
+      // cualquier micro-movimiento (9973 es ~primo, así que el módulo por
+      // un arreglo chiquito de notas rebotaba sin relación con el trazo).
+      // Ahora nx recorre la escala del agente en orden, de izquierda a
+      // derecha, como debería sonar un trazo horizontal.
+      selector = Math.floor(params.paint.nx * config.notes.length);
+      // antes: base 0.5 (una nota recién entrado a Paint, sin tinta
+      // todavía, salía a la mitad de volumen). Subido a 0.85 para que
+      // la voz del agente se escuche fuerte apenas entra, y la tinta
+      // sigue empujándola hacia el máximo igual que antes.
+      velocity = Math.min(1, velocity * (0.85 + params.paint.density * 12));
+    }
 
     try {
       if (config.type === 'space-breeze') {
         chain.instrument.triggerAttackRelease('1m', undefined, velocity);
       } else if (config.type === 'debussy-pad') {
-        const chord = config.notes[chain.noteCounter % config.notes.length];
+        const chord = config.notes[selector % config.notes.length];
         chain.instrument.triggerAttackRelease(chord, '1m', undefined, velocity * 0.55);
       } else if (config.type === 'crystal-bird') {
-        const note1 = config.notes[chain.noteCounter % config.notes.length];
-        const note2 = config.notes[(chain.noteCounter + 1) % config.notes.length];
+        const note1 = config.notes[selector % config.notes.length];
+        const note2 = config.notes[(selector + 1) % config.notes.length];
         const now = Tone.now();
         chain.instrument.triggerAttackRelease(note1, '32n', now, velocity);
         chain.instrument.triggerAttackRelease(note2, '32n', now + 0.07, velocity * 0.7);
       } else if (config.type === 'water-bubble') {
-        const note = config.notes[chain.noteCounter % config.notes.length];
+        const note = config.notes[selector % config.notes.length];
         chain.instrument.detune.value = (Math.random() - 0.5) * 80;
         chain.instrument.triggerAttackRelease(note, '16n', undefined, velocity);
       } else {
-        const note = config.notes[chain.noteCounter % config.notes.length];
+        const note = config.notes[selector % config.notes.length];
         chain.instrument.triggerAttackRelease(note, '8n', undefined, velocity);
       }
     } catch (e) {}
@@ -225,13 +381,45 @@ function createSoundEngine(params, nodes) {
     aeroDelay.feedback.rampTo(0.15 + params.order * 0.35, 0.5);
   }
 
-  return { ensureStarted, triggerBeat: triggerBeatAccent, updateCollectiveState };
+  // Cuando SÍ hay agente en Paint, no queremos esperar a que le toque su
+  // próximo beat Kuramoto (que puede caer segundos después) para reaccionar
+  // a lo que acabas de dibujar: en cuanto el trazo termina o cae un balde de
+  // pintura, lo hacemos sonar de una con lo que ya quedó pintado — y de ahí
+  // en más sigue con su pulso normal como hasta ahora.
+  function triggerAgentsInPaintNow() {
+    for (const node of nodes) {
+      if (node.windowType === 'paint' && !node.minimized) {
+        node.kick = 1.0;
+        triggerBeatAccent(node);
+      }
+    }
+  }
+
+  const paint = {
+    onStart: paintInstrument.onStart,
+    onMove: paintInstrument.onMove,
+    onEnd() {
+      paintInstrument.onEnd();
+      triggerAgentsInPaintNow();
+    },
+    onFill(nx, ny, colorHex) {
+      paintInstrument.onFill(nx, ny, colorHex);
+      triggerAgentsInPaintNow();
+    }
+  };
+
+  return { ensureStarted, triggerBeat: triggerBeatAccent, updateCollectiveState, paint };
 }
 
 // ============================================================
 // App Principal
 // ============================================================
 async function main() {
+  // Fondo de escritorio: se inyecta como variable CSS para que el bundler
+  // resuelva la ruta final del asset (hash incluido) y para poder mantener
+  // el resto de capas atmosféricas (scanlines, viñeta) definidas en el CSS.
+  document.body.style.setProperty('--wallpaper', `url(${FONDO})`);
+
   const mount = document.querySelector('#app');
   const scene = new THREE.Scene();
   scene.background = null;
@@ -296,6 +484,7 @@ async function main() {
     onReset: () => simulation.reset(),
     onPreset: applyPreset,
     onPauseChange: () => togglePause(),
+    paintAudio: soundEngine.paint,
     // Convertimos los píxeles arrastrados a unidades mundiales del motor 3D
     onWindowMove: (windowId, dxPixels, dyPixels) => {
       const aspect = innerWidth / innerHeight;
@@ -303,6 +492,17 @@ async function main() {
       const worldDx = (dxPixels / innerWidth) * viewWidth;
       const worldDy = -(dyPixels / innerHeight) * viewHeight;
       simulation.moveWindowAgents(windowId, worldDx, worldDy);
+    },
+    // La ventana se minimiza (visible=false) o se restaura (visible=true):
+    // el/los agente(s) adentro se esconden y se pausan, o reaparecen tal
+    // cual quedaron, en sincronía con la ventana.
+    onAgentWindowToggle: (windowId, visible) => {
+      simulation.setWindowAgentsMinimized(windowId, !visible);
+    },
+    // La ventana se cierra para siempre: cualquier agente que hubiera
+    // quedado adentro se libera y vuelve a deambular con normalidad.
+    onWindowClosed: (windowId) => {
+      simulation.ejectWindowAgents(windowId);
     }
   });
 
