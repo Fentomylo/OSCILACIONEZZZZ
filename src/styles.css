@@ -9,7 +9,9 @@
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 body {
-  background: #050607;
+  background:
+    radial-gradient(circle at top, rgba(76, 127, 164, 0.28), transparent 42%),
+    linear-gradient(180deg, #0d2436 0%, #050c12 60%, #030608 100%);
   position: relative;
 }
 body::before {
@@ -36,6 +38,20 @@ body::after {
 }
 canvas { display: block; width: 100%; height: 100%; }
 
+/* El canvas de los agentes vive SIEMPRE por encima de las ventanas del
+   escritorio (z 5–14) pero por debajo del panel de laboratorio (z 500),
+   así las "chicas" caminan por encima de Google/Archivos/Reproductor/
+   Papelera sin taparlo. pointer-events:none deja que los clics le
+   lleguen a las ventanas/iconos de abajo con normalidad; el arrastre de
+   agentes se resuelve aparte, por raycasting, en un listener de captura
+   en document (ver main.js), así que no depende de esto. */
+.sim-canvas {
+  position: fixed !important;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
 .panel {
   position: fixed;
   top: 14px;
@@ -53,13 +69,13 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 .panel h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: 0.12em; text-transform: uppercase; }
-.panel h2 { font-size: 11px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .1em; opacity: .78; }
-.panel p, .panel li { font-size: 12px; line-height: 1.45; color: #d7e2ee; }
-.panel .row { margin: 8px 0; }
-.panel label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
-.panel input[type="range"] { width: 100%; accent-color: #7fe2ff; }
-.panel input[type="checkbox"] { transform: translateY(1px); }
-.panel button, .panel select {
+.panel h2, .panel-body h2 { font-size: 11px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .1em; opacity: .78; }
+.panel p, .panel li, .panel-body p, .panel-body li { font-size: 12px; line-height: 1.45; color: #d7e2ee; }
+.panel .row, .panel-body .row { margin: 8px 0; }
+.panel label, .panel-body label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.panel input[type="range"], .panel-body input[type="range"] { width: 100%; accent-color: #7fe2ff; }
+.panel input[type="checkbox"], .panel-body input[type="checkbox"] { transform: translateY(1px); }
+.panel button, .panel select, .panel-body button, .panel-body select {
   width: 100%;
   margin-top: 6px;
   padding: 8px 10px;
@@ -69,19 +85,19 @@ canvas { display: block; width: 100%; height: 100%; }
   color: inherit;
   transition: background 0.2s ease, transform 0.2s ease;
 }
-.panel button:hover {
+.panel button:hover, .panel-body button:hover {
   background: rgba(127, 226, 255, 0.12);
   transform: translateY(-1px);
 }
-.panel .value { font-variant-numeric: tabular-nums; opacity: .92; }
-.panel .cast-list { background: rgba(76, 163, 255, 0.08); padding: 8px; border-radius: 6px; border-left: 2px solid rgba(79, 203, 255, 0.35); }
-.panel .group { padding-top: 4px; border-top: 1px solid rgba(255,255,255,.08); }
+.panel .value, .panel-body .value { font-variant-numeric: tabular-nums; opacity: .92; }
+.panel .cast-list, .panel-body .cast-list { background: rgba(76, 163, 255, 0.08); padding: 8px; border-radius: 6px; border-left: 2px solid rgba(79, 203, 255, 0.35); }
+.panel .group, .panel-body .group { padding-top: 4px; border-top: 1px solid rgba(255,255,255,.08); }
 .panel.hidden { display: none; }
 
 .hud {
   position: fixed;
   right: 14px;
-  bottom: 14px;
+  bottom: 54px;
   z-index: 9;
   padding: 10px 12px;
   border-radius: 10px;
@@ -95,3 +111,242 @@ canvas { display: block; width: 100%; height: 100%; }
   pointer-events: none;
 }
 .hud strong { color: #efffff; text-transform: uppercase; letter-spacing: 0.12em; }
+
+/* ============================================================
+   Escritorio retro (estilo XP / Frutiger Aero) — iconos, ventanas
+   arrastrables y barra de tareas. Antes faltaban estas reglas, por
+   eso no se veían: los elementos quedaban en flujo normal, debajo
+   del canvas a pantalla completa.
+   ============================================================ */
+
+.desktop-icons {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 76px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font-size: 11px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+  cursor: pointer;
+}
+.desktop-icon:hover,
+.desktop-icon:focus-visible {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(58, 130, 210, 0.28);
+  outline: none;
+}
+.desktop-icon .glyph {
+  font-size: 26px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+}
+
+.desktop-window {
+  position: fixed;
+  z-index: 5;
+  width: min(300px, calc(100vw - 32px));
+  border-radius: 9px 9px 6px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(20, 60, 110, 0.9);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset;
+  background: rgba(15, 28, 40, 0.92);
+  backdrop-filter: blur(10px);
+}
+.desktop-window .title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #5db3ff 0%, #1f6fd6 46%, #144fa8 100%);
+  cursor: grab;
+  user-select: none;
+}
+.desktop-window .title-bar:active { cursor: grabbing; }
+.desktop-window .close-btn {
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: linear-gradient(180deg, #ff8b8b, #d93a3a);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+.desktop-window .close-btn:hover { filter: brightness(1.15); }
+.desktop-window .window-content {
+  padding: 12px;
+  max-height: min(60vh, 480px);
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #dbe7f2;
+}
+.desktop-window .window-content p { margin: 4px 0; }
+
+.taskbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 600;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  background: linear-gradient(180deg, #3d95f0 0%, #1a5fc4 48%, #0d3f95 100%);
+  border-top: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 -6px 18px rgba(0,0,0,0.35);
+}
+.start-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 14px 0 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: linear-gradient(180deg, #7fe07f 0%, #2fa32f 55%, #1c7a1c 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  font-style: italic;
+  cursor: pointer;
+}
+.start-btn:hover { filter: brightness(1.08); }
+.clock {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #eaf4ff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- contenido "de verdad" dentro de cada ventana ---- */
+.browser-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -12px -12px 10px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 11px;
+}
+.browser-btn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  opacity: 0.8;
+}
+.browser-address {
+  flex: 1;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.9);
+  color: #1a2a3a;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.google-body { text-align: center; padding: 10px 4px 4px; }
+.google-logo {
+  font-size: 26px;
+  font-weight: 700;
+  font-style: italic;
+  background: linear-gradient(90deg, #4285f4, #ea4335 25%, #fbbc05 50%, #4285f4 75%, #34a853);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 10px;
+}
+.google-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: #fff;
+  color: #1a2a3a;
+  font-size: 11px;
+}
+.google-search .ph { opacity: 0.5; }
+.google-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 10px;
+}
+.google-actions span {
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  color: #dbe7f2;
+}
+
+.files-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -12px -12px 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 11px;
+}
+.files-grid { display: flex; flex-direction: column; gap: 6px; }
+.file-item { display: flex; align-items: center; gap: 8px; }
+.file-item .glyph { font-size: 16px; }
+.files-status { margin-top: 10px; font-size: 10px; opacity: 0.55; }
+
+.player-art {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #5db3ff, #8b6bff 50%, #ff8bd0);
+}
+.player-track { font-size: 11px; text-align: center; opacity: 0.85; margin-bottom: 8px; }
+.player-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.player-progress-fill { width: 38%; height: 100%; background: linear-gradient(90deg, #7fe2ff, #ff9bd4); }
+.player-controls { display: flex; justify-content: center; align-items: center; gap: 18px; font-size: 16px; }
+.player-controls .play { font-size: 20px; }
+
+.trash-body { text-align: center; padding: 6px 0; }
+.trash-glyph { font-size: 28px; display: block; margin-bottom: 6px; opacity: 0.7; }
