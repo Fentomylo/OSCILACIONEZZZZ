@@ -23,6 +23,9 @@ export function createParameters() {
     hatShakeAmount: 0.055,   // amplitud del jitter de posición, en unidades de mundo
     hatShakeDecay: 16,       // qué tan rápido decae el temblor (más alto = más nervioso/corto)
 
+    // --- Atributos dinámicos para Paint ---
+    paintDensity: 0.0,
+
     // --- Efectos por tipo de ventana ---
     windowEffects: {
       google: {
@@ -37,6 +40,12 @@ export function createParameters() {
         // sincronía forzada: metrónomo interno que arrastra la fase de quien esté adentro
         beatBpm: 100,
         pullStrength: 3.2
+      },
+      paint: {
+        pitchModulation: true
+      },
+      gmail: {
+        pulseFrequency: 1.5
       },
       trash: {
         // aísla y silencia por completo, y se excluye del cálculo de r

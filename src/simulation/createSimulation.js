@@ -82,7 +82,7 @@ export function createSimulation({ scene, params, onBeat }) {
 
       // --- estado en el escritorio ---
       state: 'free',        // 'free' | 'dragging' | 'window'
-      windowType: null,     // 'google' | 'files' | 'player' | 'trash'
+      windowType: null,     // 'google' | 'files' | 'player' | 'trash' | 'paint' | 'gmail'
       windowId: null,       // id de la instancia de ventana concreta (para agrupar "files")
       wanderTarget: new THREE.Vector2(startX, startY),
       wanderTimer: randomBetween(0.5, params.wanderRetarget),
@@ -194,6 +194,20 @@ export function createSimulation({ scene, params, onBeat }) {
     }
   }
 
+  // --- Movimiento solidario con la ventana ---
+  function moveWindowAgents(windowId, deltaWorldX, deltaWorldY) {
+    for (const node of nodes) {
+      if (node.state === 'window' && node.windowId === windowId) {
+        node.wrapper.position.x += deltaWorldX;
+        node.wrapper.position.y += deltaWorldY;
+        // Actualizamos también su objetivo de deambulación para que no intente
+        // regresar al punto donde estaba la ventana antes de moverla
+        node.wanderTarget.x += deltaWorldX;
+        node.wanderTarget.y += deltaWorldY;
+      }
+    }
+  }
+
   // --- Física por paso ---
 
   function stepWander(node, dt) {
@@ -248,6 +262,21 @@ export function createSimulation({ scene, params, onBeat }) {
       const pull = cfg.pullStrength * Math.sin(params.playerMetronomePhase - node.cumPhase);
       const drift = params.phaseDrift * (node.omega - 1.0) * 0.2;
       return (drift + pull) * params.dt;
+    }
+
+    if (node.windowType === 'paint') {
+      // La cantidad de dibujo acelera su fase internamente
+      const paintBoost = (params.paintDensity || 0) * 4.0;
+      const drift = params.phaseDrift * (node.omega - 1.0 + paintBoost);
+      const noise = (Math.random() - 0.5) * params.noise * 2.0;
+      return (drift + noise) * params.dt;
+    }
+
+    if (node.windowType === 'gmail') {
+      // Pulso rítmico fijo como un "ping" de correo
+      const pulse = Math.sin(Date.now() * 0.003 * params.windowEffects.gmail.pulseFrequency);
+      const drift = params.phaseDrift * node.omega + pulse * 0.5;
+      return drift * params.dt;
     }
 
     // libre: Kuramoto de campo medio clásico — todos los agentes libres se
@@ -334,6 +363,7 @@ export function createSimulation({ scene, params, onBeat }) {
     endDrag,
     ejectFromWindow,
     triggerHatShake,
+    moveWindowAgents, // <- Añadido para exponerlo a main.js
     get order() {
       return params.order;
     }

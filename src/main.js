@@ -7,7 +7,7 @@ import { createSimulation } from './simulation/createSimulation.js';
 import { createLabPanel } from './ui/labPanel.js';
 
 // ============================================================
-// Motor Generativo: Frutiger Aero OS + Efecto Chorus en Galería
+// Motor Generativo: Frutiger Aero OS + Efectos de Ventanas
 // ============================================================
 
 const AGENT_AMBIENTS = [
@@ -118,7 +118,7 @@ function createSoundEngine(params, nodes) {
     }
   }
 
-  // Actualizador continuo de filtros y enrutamiento a galería (efecto chorus)
+  // Actualizador continuo de filtros y enrutamiento
   setInterval(() => {
     if (!started) return;
     for (const node of nodes) {
@@ -160,6 +160,15 @@ function createSoundEngine(params, nodes) {
         case 'player':
           chain.volumeNode.gain.rampTo(1.4, 0.2);
           chain.filter.frequency.rampTo(9000, 0.2); 
+          break;
+        case 'paint':
+          chain.volumeNode.gain.rampTo(1.2, 0.2);
+          // Modulamos la frecuencia del filtro del agente basado en cuánto hay pintado en el canvas
+          chain.filter.frequency.rampTo(2000 + (params.paintDensity || 0) * 8000, 0.2);
+          break;
+        case 'gmail':
+          chain.volumeNode.gain.rampTo(1.0, 0.2);
+          chain.filter.frequency.rampTo(5000, 0.2);
           break;
         case 'gallery':
           chain.volumeNode.gain.rampTo(1.5, 0.2); // Más presencia y riqueza coral en la galería del perro
@@ -286,7 +295,15 @@ async function main() {
     params,
     onReset: () => simulation.reset(),
     onPreset: applyPreset,
-    onPauseChange: () => togglePause()
+    onPauseChange: () => togglePause(),
+    // Convertimos los píxeles arrastrados a unidades mundiales del motor 3D
+    onWindowMove: (windowId, dxPixels, dyPixels) => {
+      const aspect = innerWidth / innerHeight;
+      const viewWidth = viewHeight * aspect;
+      const worldDx = (dxPixels / innerWidth) * viewWidth;
+      const worldDy = -(dyPixels / innerHeight) * viewHeight;
+      simulation.moveWindowAgents(windowId, worldDx, worldDy);
+    }
   });
 
   const raycaster = new THREE.Raycaster();
