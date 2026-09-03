@@ -1,6 +1,5 @@
-// ============================================================
-// Sliders del panel de control (sin cambios respecto a tu versión)
-// ============================================================
+import brunoImg from '../bruno.jpg';
+
 function rangeRow(parent, label, valueRef, setter, min, max, step) {
   const wrap = document.createElement('div');
   wrap.className = 'row';
@@ -59,18 +58,12 @@ function buildSliders(container, { params, onReset, onPreset, onPauseChange }) {
   refreshers.push(rangeRow(sim, 'acoplamiento (K)', () => params.couplingStrength, (v) => { params.couplingStrength = v; }, 0, 4, 0.05));
   refreshers.push(rangeRow(sim, 'ruido', () => params.noise, (v) => { params.noise = v; }, 0, 1, 0.02));
   refreshers.push(rangeRow(sim, 'deriva', () => params.phaseDrift, (v) => { params.phaseDrift = v; }, 0, 1.5, 0.05));
-  refreshers.push(rangeRow(sim, 'velocidad', () => params.dt, (v) => { params.dt = v; }, 0.01, 0.08, 0.005));
+  refreshers.push(rangeRow(sim, 'velocidad', () => params.dt, (v) => { params.dt = v; }, 0.01, 0.15, 0.005));
   refreshers.push(rangeRow(sim, 'sincronía (r)', () => params.order, () => {}, 0, 1, 0.01));
-
-  const music = document.createElement('div');
-  music.className = 'group';
-  music.innerHTML = '<h2>música</h2>';
-  container.append(music);
-  refreshers.push(rangeRow(music, 'tempo (BPM)', () => params.musicBpm, (v) => { params.musicBpm = v; }, 60, 190, 1));
 
   const presets = document.createElement('div');
   presets.className = 'group';
-  presets.innerHTML = '<h2>ritmo global</h2>';
+  presets.innerHTML = '<h2>estados colectivos</h2>';
   container.append(presets);
   button(presets, '💫 Calma', () => onPreset('calm'));
   button(presets, '⚡ Caos', () => onPreset('chaos'));
@@ -79,8 +72,8 @@ function buildSliders(container, { params, onReset, onPreset, onPauseChange }) {
   const cast = document.createElement('div');
   cast.className = 'group';
   cast.innerHTML = `<h2>elenco</h2><div class="cast-list" style="font-size:10px;line-height:1.7;">
-    1. Static-Tan | w=1.8<br>2. Core-Tan | w=0.6<br>3. Mirror-Tan | w=1.1<br>4. Signal-Tan | w=1.5<br>
-    5. Petal | w=1.3<br>6. Disko | w=1.0<br>7. Pixel-Boy | w=1.2<br>8. Moth | w=1.4
+    1. Static-Tan (Rainbow)<br>2. Core-Tan (Coro)<br>3. Mirror-Tan (Pájaros)<br>4. Signal-Tan (Burbujas)<br>
+    5. Petal (Campanas)<br>6. Disko (Gota)<br>7. Pixel-Boy (Ping UI)<br>8. Moth (Brisa)
   </div>`;
   container.append(cast);
 
@@ -94,41 +87,88 @@ function buildSliders(container, { params, onReset, onPreset, onPauseChange }) {
   return refreshers;
 }
 
-// ============================================================
-// Ventanas de escritorio + iconos + barra de tareas
-// ============================================================
 const WINDOW_DEFS = {
   google: {
     title: 'Google', icon: '🌐',
-    body: `
-      <div class="browser-toolbar">
-        <span class="browser-btn">◀</span><span class="browser-btn">▶</span><span class="browser-btn">⟳</span>
-        <div class="browser-address">https://www.google.com</div>
-      </div>
-      <div class="google-body">
-        <div class="google-logo">Google</div>
-        <div class="google-search"><span>🔍</span><span class="ph">buscar algo que no importa…</span></div>
-        <div class="google-actions"><span>Buscar con Google</span><span>Voy a tener suerte</span></div>
-      </div>`
+    body: `<div class="browser-toolbar"><span class="browser-btn">◀</span><span class="browser-btn">▶</span><span class="browser-btn">⟳</span><div class="browser-address">https://www.google.com</div></div><div class="google-body"><div class="google-logo">Google</div><div class="google-search"><span>🔍</span><span class="ph">buscar algo que no importa…</span></div></div>`
   },
   files: {
     title: 'Mis Archivos', icon: '🗂️',
-    body: `
-      <div class="files-toolbar"><span>⬅</span><span>📁 Mis Archivos</span></div>
-      <div class="files-grid">
-        <div class="file-item"><span class="glyph">📁</span>fotos</div>
-        <div class="file-item"><span class="glyph">📁</span>proyectos</div>
-        <div class="file-item"><span class="glyph">📄</span>tarea_final.docx</div>
-      </div>
-      <div class="files-status">3 elementos</div>`
+    body: `<div class="files-toolbar"><span>⬅</span><span>📁 Mis Archivos</span></div><div class="files-grid"><div class="file-item"><span class="glyph">📁</span>fotos</div><div class="file-item"><span class="glyph">📁</span>proyectos</div></div>`
   },
   player: {
     title: 'Reproductor', icon: '🎵',
+    body: `<div class="player-art">🎧</div><div class="player-track">pista 03 — sin título</div><div class="player-progress"><div class="player-progress-fill"></div></div><div class="player-controls"><span>⏮</span><span class="play">▶</span><span>⏭</span></div>`
+  },
+  gallery: {
+    title: 'Galería de Bruno', icon: '🐶',
+    body: `<div style="text-align:center; padding: 4px;"><p style="font-size:11px; margin-bottom:6px; opacity:0.8;">Bruno 🐾 (¡Arrastra un agente aquí para activar el coro!)</p><img src="${brunoImg}" style="max-width:100%; height:auto; border-radius:6px; border:1px solid rgba(255,255,255,0.2); max-height: 200px;" alt="Bruno" /></div>`
+  },
+  messenger: {
+    title: 'Messenger', icon: '💬',
     body: `
-      <div class="player-art">🎧</div>
-      <div class="player-track">pista 03 — sin título</div>
-      <div class="player-progress"><div class="player-progress-fill"></div></div>
-      <div class="player-controls"><span>⏮</span><span class="play">▶</span><span>⏭</span></div>`
+      <div style="font-family:Tahoma,sans-serif; font-size:11px; color:#fff; background:rgba(10,20,30,0.85); padding:6px; border-radius:4px;">
+        <div style="display:flex; align-items:center; gap:8px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.15); margin-bottom:6px;">
+          <div style="width:32px; height:32px; background:#1f6fd6; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">🐱</div>
+          <div>
+            <div style="font-weight:bold; font-size:12px;">Tomy :3</div>
+            <div style="font-size:10px; color:#7fe2ff;">🟢 Disponible para hablar</div>
+          </div>
+        </div>
+        
+        <div style="font-size:10px; text-transform:uppercase; opacity:0.6; margin-bottom:4px; letter-spacing:0.05em;">Amigos Conectados</div>
+
+        <div style="display:flex; flex-direction:column; gap:4px; max-height:190px; overflow-y:auto; padding-right:2px;">
+          
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#2fa32f; border-radius:50%;"></div>
+            <span style="font-size:14px;">⭐</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#ff9bd4;">lady gaga</div><div style="font-size:9px; opacity:0.7;">bad_romance_92 · En línea</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#2fa32f; border-radius:50%;"></div>
+            <span style="font-size:14px;">🐾</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#70e6ff;">brunaenae</div><div style="font-size:9px; opacity:0.7;">bruna_bae · En línea</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#2fa32f; border-radius:50%;"></div>
+            <span style="font-size:14px;">🐶</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#88ffca;">bru</div><div style="font-size:9px; opacity:0.7;">bru_master · Escuchando música</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#d93a3a; border-radius:50%;"></div>
+            <span style="font-size:14px;">🏝️</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#ff5c7a;">J. Epstein</div><div style="font-size:9px; opacity:0.7;">private_island · Ausente</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#2fa32f; border-radius:50%;"></div>
+            <span style="font-size:14px;">🐻</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#fbbc05;">Kanye west</div><div style="font-size:9px; opacity:0.7;">ye_yeezy · Escuchando Donda</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#2fa32f; border-radius:50%;"></div>
+            <span style="font-size:14px;">⚡</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#7fe2ff;">Skrillex</div><div style="font-size:9px; opacity:0.7;">dubstep_god · En línea</div></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); padding:4px 6px; border-radius:4px;">
+            <div style="width:8px; height:8px; background:#e5a900; border-radius:50%;"></div>
+            <span style="font-size:14px;">⛏️</span>
+            <div style="flex:1;"><div style="font-weight:bold; color:#ffb261;">El minero</div><div style="font-size:9px; opacity:0.7;">diamond_hunter · Ocupado minando</div></div>
+          </div>
+
+        </div>
+
+        <div style="margin-top:6px; display:flex; gap:4px;">
+          <input type="text" placeholder="Escribe un estado..." style="flex:1; background:rgba(255,255,255,0.9); border:none; border-radius:3px; padding:3px 6px; font-size:10px; color:#000;" />
+        </div>
+      </div>
+    `
   },
   trash: {
     title: 'Papelera', icon: '🗑️',
@@ -136,10 +176,6 @@ const WINDOW_DEFS = {
   }
 };
 
-// z-index de las ventanas normales: siempre por DEBAJO del canvas de los
-// agentes (ver .sim-canvas en styles.css) para que las "chicas" pasen por
-// encima del escritorio. El panel de laboratorio es la única excepción y
-// se queda fijo por ENCIMA del canvas.
 const WINDOW_Z_MIN = 5;
 const WINDOW_Z_MAX = 14;
 const LAB_Z = 500;
@@ -172,10 +208,8 @@ function makeDraggable(el, handle) {
   window.addEventListener('pointerup', () => { dragging = false; });
 }
 
-// Crea todo el escritorio (iconos + ventanas + taskbar + panel de control) y
-// devuelve las funciones que main.js necesita para conectar el drag de agentes.
 export function createLabPanel({ params, onReset, onPreset, onPauseChange }) {
-  const openWindows = new Map(); // id -> { el, type, isDropTarget }
+  const openWindows = new Map();
   let windowCounter = 0;
   let refreshers = [];
 
@@ -219,7 +253,6 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange }) {
     openWindows.delete(id);
   }
 
-  // Ventana (soltable por un agente) bajo un punto de la pantalla, o null.
   function getWindowAt(clientX, clientY) {
     const entries = [...openWindows.entries()]
       .filter(([, v]) => v.isDropTarget)
@@ -234,7 +267,6 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange }) {
     return null;
   }
 
-  // --- iconos del escritorio ---
   const desktop = document.createElement('div');
   desktop.className = 'desktop-icons';
   document.body.append(desktop);
@@ -248,7 +280,6 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange }) {
     desktop.append(icon);
   });
 
-  // --- ventana "Lab" con los sliders, controlada desde el Start ---
   let labWindowId = null;
   let labOpen = false;
 
@@ -264,10 +295,8 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange }) {
     labOpen = true;
   }
 
-  // --- barra de tareas ---
   const bar = document.createElement('div');
   bar.className = 'taskbar';
-
   const startBtn = document.createElement('button');
   startBtn.className = 'start-btn';
   startBtn.innerHTML = '🪟 <span>Start</span>';
@@ -285,10 +314,5 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange }) {
   bar.append(startBtn, clock);
   document.body.append(bar);
 
-  return {
-    getWindowAt,
-    refresh() {
-      for (const item of refreshers) item.refresh();
-    }
-  };
+  return { getWindowAt, refresh() { for (const item of refreshers) item.refresh(); } };
 }
