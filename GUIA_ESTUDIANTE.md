@@ -36,7 +36,7 @@ JavaScript organiza la aplicación y modifica parámetros. La actualización mas
 
 TSL es la capa de Three.js con la que expresamos operaciones que Three.js convierte al shader apropiado. No necesitas escribir WGSL directamente en esta unidad.
 
-## Cinco exploraciones antes de diseñar
+## Cinco exploraciones antes de diseñar wowowowdasdasa
 
 En modo LAB usa `1..5` y registra la predicción y la observación:
 
