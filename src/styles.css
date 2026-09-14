@@ -47,20 +47,6 @@ body::after {
 }
 canvas { display: block; width: 100%; height: 100%; }
 
-/* El canvas de los agentes vive SIEMPRE por encima de las ventanas del
-   escritorio (z 5–14) pero por debajo del panel de laboratorio (z 500),
-   así las "chicas" caminan por encima de Google/Archivos/Reproductor/
-   Papelera sin taparlo. pointer-events:none deja que los clics le
-   lleguen a las ventanas/iconos de abajo con normalidad; el arrastre de
-   agentes se resuelve aparte, por raycasting, en un listener de captura
-   en document (ver main.js), así que no depende de esto. */
-.sim-canvas {
-  position: fixed !important;
-  inset: 0;
-  z-index: 15;
-  pointer-events: none;
-}
-
 .panel {
   position: fixed;
   top: 14px;
@@ -210,6 +196,8 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 .icon-badge--google    { --badge-a: #9ed0ff; --badge-b: #1f6fd6; }
+.icon-badge--youtube   { --badge-a: #ff6b6b; --badge-b: #cc0000; }
+.icon-badge--firefox   { --badge-a: #ffb066; --badge-b: #e0490f; }
 .icon-badge--files     { --badge-a: #ffe9a8; --badge-b: #e0980f; }
 .icon-badge--player    { --badge-a: #d3b3ff; --badge-b: #6a3ecf; }
 .icon-badge--paint     { --badge-a: #ffb0da; --badge-b: #e0348a; }
@@ -257,7 +245,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .desktop-window .close-btn:hover { filter: brightness(1.15); }
 .desktop-window .window-content {
   padding: 12px;
-  max-height: min(60vh, 480px);
   overflow: auto;
   font-size: 12px;
   line-height: 1.5;
@@ -456,3 +443,302 @@ canvas { display: block; width: 100%; height: 100%; }
 
 .trash-body { text-align: center; padding: 6px 0; }
 .trash-glyph { font-size: 28px; display: block; margin-bottom: 6px; opacity: 0.7; }
+/* ============================================================
+   Pantalla de contraseña (login), estilo Windows Vista.
+   Aparece por encima del escritorio antes de dar acceso a él;
+   al acertar la contraseña se cierra con una transición de iris
+   (clip-path circular) que va revelando el escritorio de abajo.
+   ============================================================ */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background:
+    radial-gradient(circle at 22% 12%, rgba(255,255,255,0.22), transparent 42%),
+    linear-gradient(135deg, #7fd0c6 0%, #429a95 32%, #256f83 62%, #123b4d 100%);
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  color: #fff;
+  clip-path: circle(150% at 50% 50%);
+  transition: clip-path 950ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.login-overlay.revealing {
+  clip-path: circle(0% at 50% 50%);
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.login-card.success {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.login-avatar {
+  width: 128px;
+  height: 128px;
+  border-radius: 14px;
+  padding: 6px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #e4edf1, #93a6b1);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.6);
+}
+.login-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+.login-username {
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.login-field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.login-password {
+  width: 260px;
+  padding: 10px 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.2);
+  font-size: 14px;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25) inset;
+}
+.login-submit {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: radial-gradient(circle at 30% 30%, #8fd2f5, #1b60a8 72%);
+  color: #fff;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.login-submit:hover { filter: brightness(1.1); }
+.login-submit:disabled { opacity: 0.6; cursor: default; }
+
+.login-error {
+  font-size: 12px;
+  color: #ffe1e1;
+  background: rgba(150, 20, 20, 0.4);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 5px 12px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  max-width: 260px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.login-error.visible { opacity: 1; }
+
+.login-switch-user {
+  position: absolute;
+  bottom: 56px;
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.login-switch-user:hover { background: rgba(255,255,255,0.16); }
+
+.login-welcome {
+  position: absolute;
+  font-size: 26px;
+  font-weight: 300;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.login-welcome.visible { opacity: 1; }
+
+@keyframes login-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+.login-card.shake { animation: login-shake 0.5s; }
+
+/* ============================================================
+   ARAÑAVIRUS — bicho de escritorio estilo BonziBuddy (ver
+   ui/aranavirus.js). Se activa al abrir Paint. Sin botón de
+   cerrar: es un "virus", queda dando vueltas para siempre.
+   ============================================================ */
+
+.aranavirus {
+  position: fixed;
+  width: 84px;
+  height: 84px;
+  z-index: 99998;
+  pointer-events: none;
+}
+
+.aranavirus-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,0.5));
+  animation: aranavirus-bob 2.4s ease-in-out infinite;
+  transition: transform 0.4s ease;
+}
+
+@keyframes aranavirus-bob {
+  0%, 100% { transform: translateY(0) scaleX(var(--aranavirus-face, 1)); }
+  50% { transform: translateY(-8px) scaleX(var(--aranavirus-face, 1)); }
+}
+
+.aranavirus-img.aranavirus-spin {
+  animation: aranavirus-spin 0.5s linear infinite;
+}
+@keyframes aranavirus-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.aranavirus-img.aranavirus-dance {
+  animation: aranavirus-dance 0.35s ease-in-out infinite;
+}
+@keyframes aranavirus-dance {
+  0%, 100% { transform: rotate(-12deg) translateY(0); }
+  50% { transform: rotate(12deg) translateY(-6px); }
+}
+
+.aranavirus-ghost {
+  position: fixed;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  z-index: 99997;
+  opacity: 0.55;
+  pointer-events: none;
+  animation: aranavirus-ghost-fade 1.3s ease-out forwards;
+}
+@keyframes aranavirus-ghost-fade {
+  0% { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+
+.aranavirus-bubble {
+  position: fixed;
+  z-index: 99999;
+  transform: translate(-50%, -100%);
+  min-width: 190px;
+  max-width: 240px;
+  background: #fffef2;
+  border: 2px solid #2b2b2b;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 12px;
+  color: #222;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.aranavirus-bubble.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.aranavirus-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  border-width: 9px 8px 0 8px;
+  border-style: solid;
+  border-color: #2b2b2b transparent transparent transparent;
+}
+.aranavirus-bubble::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  border-width: 7px 6px 0 6px;
+  border-style: solid;
+  border-color: #fffef2 transparent transparent transparent;
+  z-index: 1;
+}
+
+.aranavirus-bubble-text {
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.aranavirus-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aranavirus-option {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  color: #000;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid #adadad;
+  background: linear-gradient(180deg, #fafafa 0%, #e1e1e1 100%);
+  cursor: pointer;
+}
+.aranavirus-option:hover {
+  background: linear-gradient(180deg, #d0e3fc 0%, #a9c9f5 100%);
+  border-color: #3b82f6;
+}
+
+.aranavirus-progress {
+  width: 100%;
+  height: 10px;
+  background: #e6e6e6;
+  border: 1px solid #adadad;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.aranavirus-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #7fe2ff, #ff9bd4);
+  transition: width 2.4s linear;
+}
+
+.aranavirus-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.aranavirus-flash.go {
+  opacity: 0.85;
+  transition: opacity 0.1s ease, opacity 0.5s ease 0.15s;
+}

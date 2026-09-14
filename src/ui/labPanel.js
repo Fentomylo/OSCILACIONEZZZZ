@@ -1,47 +1,13 @@
 import brunoImg from '../bruno.jpg';
 import moritaImg from '../morita.jpg';
 import gatovichImg from '../gatovich.jpg';
+import telarañaImg from '../ARAÑA.jpg';
+import salonImg from '../SALON.jpg';
+import unoVideo from '../UNO.mp4';
+import ejemploImg from '../EJEMPLO.jpg';
+import { activateAranavirus } from '../simulation/createSimulation.js';
 
-function rangeRow(parent, label, valueRef, setter, min, max, step) {
-  const wrap = document.createElement('div');
-  wrap.className = 'row';
-
-  const lab = document.createElement('label');
-  const name = document.createElement('span');
-  const value = document.createElement('span');
-  value.className = 'value';
-  name.textContent = label;
-
-  const input = document.createElement('input');
-  input.type = 'range';
-  input.min = String(min);
-  input.max = String(max);
-  input.step = String(step);
-  input.value = String(valueRef());
-
-  const sync = () => {
-    const next = Number(input.value);
-    setter(next);
-    value.textContent = Number(next).toFixed(step < 0.1 ? 2 : 1);
-  };
-
-  input.addEventListener('input', sync);
-  sync();
-  lab.append(name, value);
-  wrap.append(lab, input);
-  parent.append(wrap);
-
-  return {
-    refresh() {
-      const next = Number(valueRef());
-      input.value = String(next);
-      value.textContent = Number(next).toFixed(step < 0.1 ? 2 : 1);
-    }
-  };
-}
-
-function buildStartMenuContent(container, { params, onReset, onPreset, onPauseChange }) {
-  const refreshers = [];
+function buildStartMenuContent(container) {
   container.innerHTML = '';
   container.style.cssText = `
     font-family: 'Segoe UI', Tahoma, sans-serif;
@@ -87,97 +53,11 @@ function buildStartMenuContent(container, { params, onReset, onPreset, onPauseCh
     overflow: hidden;
   `;
 
-  // Left Column (White background, Kuramoto sliders & controls)
-  const leftCol = document.createElement('div');
-  leftCol.style.cssText = `
-    flex: 1.1;
-    background: #fff;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow-y: auto;
-    border-right: 1px solid #b8d0e8;
-  `;
-
-  const kuramotoTitle = document.createElement('div');
-  kuramotoTitle.style.cssText = 'font-weight: bold; color: #16386d; font-size: 11px; border-bottom: 1px solid #d0d8e8; padding-bottom: 2px; margin-bottom: 2px;';
-  kuramotoTitle.textContent = 'KURAMOTO (8 espíritus)';
-  leftCol.append(kuramotoTitle);
-
-  const kWrap = document.createElement('div');
-  kWrap.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
-  leftCol.append(kWrap);
-
-  refreshers.push(rangeRow(kWrap, 'acoplamiento (K)', () => params.couplingStrength, (v) => { params.couplingStrength = v; }, 0, 4, 0.05));
-  refreshers.push(rangeRow(kWrap, 'ruido', () => params.noise, (v) => { params.noise = v; }, 0, 1, 0.02));
-  refreshers.push(rangeRow(kWrap, 'deriva', () => params.phaseDrift, (v) => { params.phaseDrift = v; }, 0, 1.5, 0.05));
-  refreshers.push(rangeRow(kWrap, 'velocidad', () => params.dt, (v) => { params.dt = v; }, 0.01, 0.15, 0.005));
-  refreshers.push(rangeRow(kWrap, 'sincronía (r)', () => params.order, () => {}, 0, 1, 0.01));
-
-  const presetsTitle = document.createElement('div');
-  presetsTitle.style.cssText = 'font-weight: bold; color: #16386d; font-size: 11px; border-bottom: 1px solid #d0d8e8; padding-bottom: 2px; margin-top: 6px; margin-bottom: 2px;';
-  presetsTitle.textContent = 'ESTADOS COLECTIVOS';
-  leftCol.append(presetsTitle);
-
-  const btnContainer = document.createElement('div');
-  btnContainer.style.cssText = 'display: flex; gap: 4px;';
-  leftCol.append(btnContainer);
-
-  const calmBtn = document.createElement('button');
-  calmBtn.textContent = '💫 Calma';
-  calmBtn.style.cssText = 'flex: 1; padding: 3px; font-size: 10px; font-weight: bold; cursor: pointer; background: #f0f4f8; border: 1px solid #7f9db9; border-radius: 3px;';
-  calmBtn.addEventListener('click', () => {
-    onPreset('calm');
-    refreshers.forEach(r => r.refresh());
-  });
-
-  const chaosBtn = document.createElement('button');
-  chaosBtn.textContent = '⚡ Caos';
-  chaosBtn.style.cssText = 'flex: 1; padding: 3px; font-size: 10px; font-weight: bold; cursor: pointer; background: #f0f4f8; border: 1px solid #7f9db9; border-radius: 3px;';
-  chaosBtn.addEventListener('click', () => {
-    onPreset('chaos');
-    refreshers.forEach(r => r.refresh());
-  });
-
-  const syncBtn = document.createElement('button');
-  syncBtn.textContent = '🔗 Unión';
-  syncBtn.style.cssText = 'flex: 1; padding: 3px; font-size: 10px; font-weight: bold; cursor: pointer; background: #f0f0f4f8; border: 1px solid #7f9db9; border-radius: 3px;';
-  syncBtn.addEventListener('click', () => {
-    onPreset('sync');
-    refreshers.forEach(r => r.refresh());
-  });
-  btnContainer.append(calmBtn, chaosBtn, syncBtn);
-
-  const ctrlTitle = document.createElement('div');
-  ctrlTitle.style.cssText = 'font-weight: bold; color: #16386d; font-size: 11px; border-bottom: 1px solid #d0d8e8; padding-bottom: 2px; margin-top: 6px; margin-bottom: 2px;';
-  ctrlTitle.textContent = 'CONTROL';
-  leftCol.append(ctrlTitle);
-
-  const ctrlBtnContainer = document.createElement('div');
-  ctrlBtnContainer.style.cssText = 'display: flex; gap: 4px;';
-  leftCol.append(ctrlBtnContainer);
-
-  const resetBtn = document.createElement('button');
-  resetBtn.textContent = '🔄 Reset';
-  resetBtn.style.cssText = 'flex: 1; padding: 3px; font-size: 10px; font-weight: bold; cursor: pointer; background: #f0f4f8; border: 1px solid #7f9db9; border-radius: 3px;';
-  resetBtn.addEventListener('click', () => {
-    onReset();
-    refreshers.forEach(r => r.refresh());
-  });
-
-  const pauseBtn = document.createElement('button');
-  pauseBtn.textContent = '⏸ Pausar';
-  pauseBtn.style.cssText = 'flex: 1; padding: 3px; font-size: 10px; font-weight: bold; cursor: pointer; background: #f0f4f8; border: 1px solid #7f9db9; border-radius: 3px;';
-  pauseBtn.addEventListener('click', onPauseChange);
-  ctrlBtnContainer.append(resetBtn, pauseBtn);
-
-  bodyColumns.append(leftCol);
-
-  // Right Column (Blue XP style shortcuts)
+  // Columna de atajos (estilo XP azul) — es lo único que queda del menú
+  // Start: ya no hay controles de simulación, solo decoración visual.
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
-    flex: 0.9;
+    flex: 1;
     background: #d3e5f5;
     padding: 8px 6px;
     display: flex;
@@ -245,14 +125,13 @@ function buildStartMenuContent(container, { params, onReset, onPreset, onPauseCh
     </div>
   `;
   container.append(footerBar);
-
-  return refreshers;
 }
 
 // Clase de insignia "glossy" (Frutiger Aero / Vista) por tipo de ventana —
 // ver .icon-badge en styles.css
 const ICON_BADGE_CLASS = {
-  google: 'icon-badge--google',
+  youtube: 'icon-badge--youtube',
+  firefox: 'icon-badge--firefox',
   files: 'icon-badge--files',
   player: 'icon-badge--player',
   paint: 'icon-badge--paint',
@@ -263,64 +142,274 @@ const ICON_BADGE_CLASS = {
 };
 
 const WINDOW_DEFS = {
-  google: {
-    title: 'Google', icon: '🌐',
+  youtube: {
+    title: 'YouTube', icon: '▶️',
     body: `
-      <div style="font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px; font-weight: bold; color: #000; background: #f0f0f0; display: flex; flex-direction: column; width: 100%; height: 100%; border-radius: 0 0 6px 6px; overflow: hidden; box-sizing: border-box; user-select: none;">
-        
-        <!-- Tab Bar -->
-        <div style="display: flex; align-items: flex-end; background: #e3e3e3; padding: 4px 6px 0 6px; gap: 4px; border-bottom: 1px solid #c0c0c0; flex-shrink: 0;">
-          <div style="background: #fff; padding: 5px 14px; border-top-left-radius: 4px; border-top-right-radius: 4px; border: 1px solid #c0c0c0; border-bottom: none; display: flex; align-items: center; gap: 6px; font-size: 11px;">
-            <span>🌐</span> <span>Google</span> <span style="font-size: 9px; color: #666; cursor: pointer; margin-left: 4px;">✕</span>
-          </div>
-          <div style="padding: 4px 10px; font-size: 14px; color: #444; cursor: pointer;">+</div>
-        </div>
+      <div style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; background: #fff; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; box-sizing: border-box; user-select: none;">
 
-        <!-- Browser Toolbar -->
-        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #ececec; border-bottom: 1px solid #c0c0c0; flex-shrink: 0;">
-          <div style="display: flex; gap: 2px;">
-            <button style="width: 24px; height: 24px; background: #f0f0f0; border: 1px solid #adadad; border-radius: 3px; cursor: pointer; font-weight: bold;">◀</button>
-            <button style="width: 24px; height: 24px; background: #f0f0f0; border: 1px solid #adadad; border-radius: 3px; cursor: pointer; font-weight: bold;">▶</button>
-            <button style="width: 24px; height: 24px; background: #f0f0f0; border: 1px solid #adadad; border-radius: 3px; cursor: pointer; font-weight: bold;">⟳</button>
+        <!-- Cabecera -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 12px 4px; border-bottom: 3px solid #e6e6e6; flex-shrink: 0;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="background: #cc0000; color: #fff; font-weight: 900; font-size: 18px; padding: 2px 6px; border-radius: 3px; font-family: Arial, sans-serif;">You<span style="background:#fff; color:#cc0000; padding: 0 3px; border-radius: 2px;">Tube</span></span>
+            </div>
+            <div style="font-size: 9px; color: #666; font-weight: bold; margin-top: 2px;">Broadcast Yourself™</div>
           </div>
-          <div style="flex: 1; display: flex; align-items: center; background: #fff; border: 1px solid #adadad; border-radius: 3px; padding: 3px 8px; gap: 6px;">
-            <span style="color: #008000; font-size: 12px;">🔒</span>
-            <span style="color: #555; font-weight: normal;">https://www.google.com</span>
-          </div>
-          <div style="display: flex; gap: 6px; align-items: center; font-weight: normal; font-size: 10px; color: #333;">
-            <span>Gmail</span>
-            <span>Images</span>
-            <span style="background: #ddd; padding: 2px 6px; border-radius: 2px;">⚙️</span>
-            <span style="background: #3b82f6; color: #fff; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 9px;">U</span>
+          <div style="text-align: right; font-size: 10px; color: #3388dd; display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
+            <div>Sign Up | My Account | History | Help | <span style="color:#000;">Log In</span></div>
+            <div style="display: flex; align-items: center; gap: 4px; background: #f2f2f2; border: 1px solid #ccc; border-radius: 3px; padding: 2px 6px;">
+              <input type="text" style="border: none; outline: none; font-size: 10px; width: 150px; background: transparent;" placeholder="Buscar" />
+              <span style="color: #444;">🔍</span>
+            </div>
           </div>
         </div>
 
-        <!-- Google Homepage Content -->
-        <div style="flex: 1; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; overflow: auto;">
-          <div style="font-size: 52px; font-weight: 900; letter-spacing: -2px; margin-bottom: 20px;">
-            <span style="color: #4285f4;">G</span><span style="color: #ea4335;">o</span><span style="color: #fbbc05;">o</span><span style="color: #4285f4;">g</span><span style="color: #34a853;">l</span><span style="color: #ea4335;">e</span>
+        <!-- Barra de pestañas -->
+        <div style="display: flex; gap: 14px; padding: 6px 12px; background: #f6f6f6; border-bottom: 1px solid #ddd; font-size: 10px; font-weight: bold; color: #555; flex-shrink: 0;">
+          <span style="color: #cc0000; border-bottom: 2px solid #cc0000; padding-bottom: 4px;">Videos</span>
+          <span>Categories</span>
+          <span>Channels</span>
+          <span>Community</span>
+        </div>
+
+        <!-- Cuerpo -->
+        <div style="flex: 1; overflow-y: auto; padding: 10px 12px;">
+          <div style="font-size: 15px; font-weight: bold; color: #222; margin-bottom: 6px;">uno.mp4</div>
+
+          <div style="display: flex; gap: 12px;">
+
+            <!-- Columna del video -->
+            <div style="flex: 1; min-width: 0;">
+              <video class="yt-video" src="${unoVideo}" controls playsinline style="display: block; width: 100%; height: auto; background: #000;"></video>
+
+              <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                <button class="yt-back" title="Retroceder 10s" style="background: #f0f0f0; border: 1px solid #bbb; border-radius: 3px; padding: 3px 8px; font-size: 10px; cursor: pointer;">⏪ 10s</button>
+                <button class="yt-fwd" title="Adelantar 10s" style="background: #f0f0f0; border: 1px solid #bbb; border-radius: 3px; padding: 3px 8px; font-size: 10px; cursor: pointer;">10s ⏩</button>
+                <button class="yt-mute" title="Silenciar" style="background: #f0f0f0; border: 1px solid #bbb; border-radius: 3px; padding: 3px 8px; font-size: 10px; cursor: pointer;">🔊 Silenciar</button>
+              </div>
+
+              <div style="display: flex; gap: 14px; margin-top: 8px; padding-bottom: 6px; border-bottom: 1px solid #eee; font-size: 10px; color: #3388dd;">
+                <span>📤 Share</span><span>❤️ Favorite</span><span>➕ Add to Playlists</span><span>🚩 Flag</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 10px; color: #555;">
+                <span>Rate:</span><span style="color:#f4b400;">★★★★☆</span>
+                <span>Views: 14,289</span>
+              </div>
+
+              <div style="margin-top: 10px;">
+                <div style="font-weight: bold; font-size: 22px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px;">Comments &amp; Responses</div>
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee;"><b>usuario_anonimo_22:</b> nadie más vio esto? borren el video ya</div>
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee;"><b>vigilante_nocturno:</b> yo grabé esto, no debería estar acá</div>
+
+                <div style="font-size: 19px; line-height: 1.7; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee; background: #f7f9fb;">
+                  <b>bloque314_archivo:</b>
+                  Pequeñas historias ambientadas en el mismo universo desde la perspectiva de otros personajes.<br/>
+                  Al final de cada video, el espectador tendría que tomar una decisión que lo llevaría a otro video y a una nueva parte del recorrido.<br/>
+                  El objetivo es colocar al usuario en los zapatos del personaje para una experiencia inmersiva.<br/>
+                  El proyecto contaría con diferentes caminos y finales, haciendo que el público quiera repetir la experiencia, comparar decisiones y compartir sus resultados.<br/>
+                  Además, YouTube nos permite trabajar sobre una plataforma ya conocida, accesible y fácil de compartir.
+                </div>
+
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee;"><b>explorador_314:</b> Otra vez a ver que final encuentro!!</div>
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee;"><b>no_deberia_verlo:</b> Encontré un cuarto que seguro no ha encontrado nadie…</div>
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee;"><b>perdido_en_el_pasillo:</b> Hay demasiados cuartos, cada vez que pongo este video me puedo perder por horas</div>
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0; border-bottom: 1px dashed #eee;"><b>fan_anonima22:</b> Es increíble que algo tan profundo pueda hacerse en YouTube…</div>
+                <div style="font-size: 19px; line-height: 1.6; color: #444; padding: 10px 0;"><b>jugador_302:</b> Siempre me siento demasiado en los zapatos del personaje… me asusta mucho cuando muero.</div>
+
+                <div style="margin-top: 12px; padding-top: 8px; border-top: 1px dashed #ccc; font-size: 19px; line-height: 1.6; color: #555;">
+                  La idea de esto es que al final de cada video aparezca así:
+                  <img src="${ejemploImg}" style="display: block; max-width: 100%; height: auto; margin-top: 6px; border: 1px solid #ccc;" alt="Ejemplo de pantalla final" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna lateral: canal y relacionados -->
+            <div style="width: 190px; flex-shrink: 0;">
+              <div style="font-size: 10px; color: #555; margin-bottom: 6px;">From: <span style="color:#3388dd; font-weight:bold;">bloque314_archivo</span></div>
+              <div style="font-size: 9px; color: #888; margin-bottom: 8px;">Joined: 7 months ago<br/>Videos: 25</div>
+
+              <div style="font-weight: bold; font-size: 10px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 6px;">Related Videos</div>
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 9px; color: #444;">
+                <div style="display: flex; gap: 6px; align-items: flex-start;">
+                  <img src="${salonImg}" style="width: 48px; height: 36px; object-fit: cover; border: 1px solid #ccc; flex-shrink: 0;" alt="" />
+                  <div>Grabación #04 — Turno nocturno<br/><span style="color:#888;">Views: 8,214</span></div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: flex-start;">
+                  <img src="${telarañaImg}" style="width: 48px; height: 36px; object-fit: cover; border: 1px solid #ccc; flex-shrink: 0;" alt="" />
+                  <div>Anomalía aula 314 (cámara fija)<br/><span style="color:#888;">Views: 5,662</span></div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: flex-start;">
+                  <img src="${salonImg}" style="width: 48px; height: 36px; object-fit: cover; border: 1px solid #ccc; flex-shrink: 0;" alt="" />
+                  <div>Foro: marcas en la pared — hilo cerrado<br/><span style="color:#888;">Views: 3,391</span></div>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <div style="width: 100%; max-width: 480px; display: flex; align-items: center; border: 1px solid #dfe1e5; border-radius: 24px; padding: 8px 16px; box-shadow: 0 1px 6px rgba(32,33,36,.28); margin-bottom: 20px; background: #fff;">
-            <span style="color: #9aa0a6; margin-right: 10px; font-size: 14px;">🔍</span>
-            <input type="text" placeholder="Buscar en Google o escribir una URL" style="flex: 1; border: none; outline: none; font-size: 13px; font-weight: normal; color: #202124; background: transparent;" />
-            <span style="color: #4285f4; font-size: 16px; cursor: pointer;">🎙️</span>
+        </div>
+      </div>
+    `
+  },
+  firefox: {
+    title: 'Firefox', icon: '🦊',
+    body: `
+      <div style="font-family: Verdana, Geneva, Tahoma, sans-serif; font-size: 11px; color: #cfd0e6; background: #0a0714; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; box-sizing: border-box; user-select: none;">
+
+        <!-- Barra de navegación del navegador -->
+        <div class="browser-toolbar" style="margin: 0; background: #1c1428; border-bottom: 1px solid #3a2a55;">
+          <div class="browser-btn">◀</div>
+          <div class="browser-btn">▶</div>
+          <div class="browser-btn">⟳</div>
+          <div class="browser-address" style="background: #0f0a1a; color: #9a8fc0;">🔒 www.creepywiki.net/archivo_interno/bloque_314</div>
+        </div>
+
+        <!-- Masthead -->
+        <div style="background: #000; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #5a2e8c; flex-shrink: 0;">
+          <div>
+            <span style="font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #b98bff; text-shadow: 0 0 6px rgba(185,139,255,0.5);">WWW.CREEPYWIKI.NET</span>
+            <span style="color: #6a5a8a; font-size: 10px;"> / ARCHIVO_INTERNO / BLOQUE_314</span>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <button style="background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; color: #3c4043; font-family: arial,sans-serif; font-size: 13px; font-weight: bold; margin: 11px 4px; padding: 8px 16px; cursor: pointer;">Google Search</button>
-            <button style="background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; color: #3c4043; font-family: arial,sans-serif; font-size: 13px; font-weight: bold; margin: 11px 4px; padding: 8px 16px; cursor: pointer;">I'm Feeling Lucky</button>
+          <div style="display: flex; align-items: center; gap: 4px; background: #150f22; border: 1px solid #4a3a6a; border-radius: 2px; padding: 3px 6px;">
+            <span style="color: #7a6a9a; font-size: 9px;">SEARCH FOR:</span>
+            <input type="text" style="width: 70px; background: #0a0714; border: 1px solid #3a2a55; color: #cfc0f0; font-size: 10px; padding: 1px 3px;" />
           </div>
         </div>
 
-        <!-- Browser Footer Links -->
-        <div style="background: #f2f2f2; border-top: 1px solid #dadce0; padding: 8px 16px; display: flex; justify-content: space-between; font-size: 10px; color: #70757a; font-weight: normal; flex-shrink: 0;">
-          <div style="display: flex; gap: 15px;">
-            <span>Advertising</span><span>Business</span><span>About</span>
+        <!-- Navegación superior -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(180deg, #2a1a45 0%, #170f28 100%); padding: 5px 10px; border-bottom: 1px solid #5a2e8c; font-size: 10px; font-weight: bold; flex-shrink: 0; flex-wrap: wrap; gap: 4px;">
+          <div style="display: flex; gap: 9px; color: #c9b8f0; flex-wrap: wrap;">
+            <span style="cursor: pointer;">[ HOME ]</span>
+            <span style="cursor: pointer;">[ DESCRIPCIÓN ]</span>
+            <span style="cursor: pointer;">[ ANOMALÍAS ]</span>
+            <span style="cursor: pointer;">[ EXPEDIENTES ]</span>
+            <span style="cursor: pointer;">[ PROTOCOLOS ]</span>
+            <span style="cursor: pointer; color: #ff5c7a;">[ CASO_FELIPE ]</span>
+            <span style="cursor: pointer;">[ FORO ]</span>
+            <span style="cursor: pointer;">[ BÚSQUEDA ]</span>
           </div>
-          <div style="display: flex; gap: 15px;">
-            <span>Privacy</span><span>Terms</span><span>Settings</span>
-          </div>
+          <div style="color: #6a5a8a; font-weight: normal; font-size: 9px;">VIERNES, 13 DE SEPTIEMBRE DE 2006</div>
         </div>
 
+        <!-- Barra de sección -->
+        <div style="background: #3a1030; color: #f0d8e8; font-weight: bold; padding: 4px 10px; font-size: 11px; letter-spacing: 0.05em; border-bottom: 1px solid #5a2e8c; flex-shrink: 0;">[ ARCHIVO PRINCIPAL ]</div>
+
+        <!-- Cuerpo: 3 columnas — UN SOLO scroll para toda la fila (el div de
+             afuera), y adentro un renglón flex normal (sin forzar
+             align-items) con min-height:100%: así, si el contenido es corto
+             las columnas igual llenan todo el alto sin dejar espacio vacío
+             abajo, y si es largo, las tres columnas crecen parejo (la más
+             alta define el alto de todas) en vez de quedar descuadradas. -->
+        <div style="flex: 1; overflow-y: auto; overflow-x: hidden;">
+        <div style="display: flex; min-height: 100%;">
+
+          <!-- Columna izquierda: navegación -->
+          <div style="width: 195px; background: #120b1f; border-right: 1px solid #3a2a55; padding: 10px 8px; flex-shrink: 0; font-size: 10px; line-height: 1.7;">
+
+            <div style="color: #c9b8f0; font-weight: bold; letter-spacing: 0.04em; margin-bottom: 3px; border-bottom: 1px solid #2a1e40; padding-bottom: 2px;">Índice de Anomalías</div>
+            <div style="padding-left: 8px; color: #a89bc4; margin-bottom: 10px;">
+              <div>› Pasillos Infinitos (Nivel -2)</div>
+              <div>› Escaleras sin retorno</div>
+              <div>› Anomalías lumínicas en el aula 314</div>
+            </div>
+
+            <div style="color: #c9b8f0; font-weight: bold; letter-spacing: 0.04em; margin-bottom: 3px; border-bottom: 1px solid #2a1e40; padding-bottom: 2px;">Expedientes de Víctimas</div>
+            <div style="padding-left: 8px; color: #a89bc4; margin-bottom: 10px;">
+              <div>› Caso #04: Estudiante no identificado (Grabación de audio disponible)</div>
+              <div>› Caso #09: Registro de cámaras de seguridad (Fragmento corrupto)</div>
+              <div>› Desapariciones masivas del turno nocturno</div>
+            </div>
+
+            <div style="color: #c9b8f0; font-weight: bold; letter-spacing: 0.04em; margin-bottom: 3px; border-bottom: 1px solid #2a1e40; padding-bottom: 2px;">Protocolos de Contención</div>
+            <div style="padding-left: 8px; color: #a89bc4; margin-bottom: 10px;">
+              <div>› Qué hacer si escucha ruidos metálicos en los ductos</div>
+              <div>› Reglas obligatorias para salir del edificio antes de medianoche</div>
+              <div>› Advertencia sobre las luces de emergencia</div>
+            </div>
+
+            <div style="color: #ff5c7a; font-weight: bold; letter-spacing: 0.04em; margin-bottom: 3px; border-bottom: 1px solid #2a1e40; padding-bottom: 2px;">Caso Felipe (CLAVE REQUERIDA)</div>
+            <div style="padding-left: 8px; color: #a89bc4;">
+              <div>› Acceso al registro de investigación principal</div>
+              <div>› Transmisión en directo interrumpida</div>
+              <div>› Enlace al archivo del cortometraje principal</div>
+            </div>
+          </div>
+
+          <!-- Columna central: contenido principal -->
+          <div style="flex: 1; padding: 12px; background: #0d0918;">
+            <div style="font-weight: bold; font-size: 13px; color: #c9b8f0; border-bottom: 1px solid #3a2a55; padding-bottom: 4px; margin-bottom: 8px; letter-spacing: 0.03em;">DESCRIPCIÓN DEL SISTEMA / CONCEPTO TRANSMEDIA</div>
+
+            <p style="line-height: 1.55; color: #cfc8e0; font-weight: normal; margin: 0 0 10px;">El proyecto se despliega como una experiencia inmersiva previa al cortometraje y a la realidad virtual, utilizando una plataforma web con estética de archivo clasificado e intervenido.</p>
+
+            <p style="line-height: 1.55; color: #cfc8e0; font-weight: normal; margin: 0 0 4px;">La propuesta sumerge a la audiencia en una investigación no lineal sobre las anomalías arquitectónicas y las desapariciones en el Bloque 314. A través de este entorno de falsa realidad, los usuarios fungen como investigadores que descifran expedientes y bitácoras corruptas, expandiendo el universo narrativo antes de confrontar la historia principal de Felipe.</p>
+
+            <div style="background: #3a1030; color: #f0d8e8; font-weight: bold; padding: 4px 8px; font-size: 11px; margin: 16px 0 8px; letter-spacing: 0.05em;">[ ARCHIVOS RECIENTES ]</div>
+
+            <div style="display: flex; flex-direction: column; gap: 9px;">
+              <div style="border-bottom: 1px dashed #2a1e40; padding-bottom: 8px;">
+                <span style="color: #e0d0ff; font-weight: bold;">Bitácora de Audio #88:</span>
+                <span style="color: #a89bc4; font-weight: normal;"> "Juro que esa puerta no estaba ahí hace cinco minutos..."</span>
+                <span style="color: #ff9dbb; font-weight: bold; cursor: pointer;"> [ESCUCHAR AUDIO]</span>
+              </div>
+              <div style="border-bottom: 1px dashed #2a1e40; padding-bottom: 8px;">
+                <span style="color: #e0d0ff; font-weight: bold;">Reporte Psicológico:</span>
+                <span style="color: #a89bc4; font-weight: normal;"> Paranoia colectiva y pérdida de noción temporal en el campus occidental.</span>
+                <span style="color: #ff9dbb; font-weight: bold; cursor: pointer;"> [LEER REPORTE]</span>
+              </div>
+              <div>
+                <span style="color: #e0d0ff; font-weight: bold;">Foro Estudiantil (Cercado):</span>
+                <span style="color: #a89bc4; font-weight: normal;"> ¿Alguien más vio las marcas extrañas en las paredes del bloque viejo?</span>
+                <span style="color: #ff9dbb; font-weight: bold; cursor: pointer;"> [VER HILO]</span>
+              </div>
+            </div>
+
+            <div style="background: #3a1030; color: #f0d8e8; font-weight: bold; padding: 4px 8px; font-size: 11px; margin: 16px 0 8px; letter-spacing: 0.05em;">[ GALERÍA / EVIDENCIA FOTOGRÁFICA ]</div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 220px; border: 1px solid #3a2a55; border-radius: 3px; overflow: hidden; background: #150f22;">
+                <img src="${telarañaImg}" style="display: block; max-width: 100%; height: auto;" alt="Telaraña en el techo del aula 314" />
+                <div style="padding: 5px 6px; font-size: 9px; color: #a89bc4; line-height: 1.4;">
+                  <span style="color: #e0d0ff; font-weight: bold;">IMG_0417.jpg</span> — subida por <span style="color:#ff9dbb;">usuario_anonimo_22</span><br/>
+                  "Encontré esto en el techo del aula 314. No hay arañas así de grandes en la ciudad."
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 220px; border: 1px solid #3a2a55; border-radius: 3px; overflow: hidden; background: #150f22;">
+                <img src="${salonImg}" style="display: block; max-width: 100%; height: auto;" alt="Salón vacío del bloque 314" />
+                <div style="padding: 5px 6px; font-size: 9px; color: #a89bc4; line-height: 1.4;">
+                  <span style="color: #e0d0ff; font-weight: bold;">IMG_0422.jpg</span> — subida por <span style="color:#ff9dbb;">vigilante_nocturno</span><br/>
+                  "Así quedó el salón después del turno. Nadie más entró esa noche."
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna derecha: publicidad -->
+          <div style="width: 158px; background: #0a0512; border-left: 1px solid #3a2a55; padding: 8px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+            <div style="color: #6a5a8a; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;">/ publicidad / anuncio comunitario</div>
+
+            <div style="background: linear-gradient(180deg, #4a1020 0%, #1a0810 100%); border: 1px solid #7a2035; border-radius: 3px; padding: 8px; text-align: center;">
+              <div style="color: #ff8fa8; font-weight: bold; font-size: 11px; margin-bottom: 4px; letter-spacing: 0.04em;">¿NECESITAS AYUDA?</div>
+              <div style="color: #d0aeb8; font-size: 9px; line-height: 1.45; font-weight: normal;">No confíes en los pasillos largos. Si escuchas pasos que te imitan, corre en dirección contraria. Esta wiki no se hace responsable por lo que ocurra después de las Campanadas de la noche.</div>
+            </div>
+
+            <div style="border: 1px solid #3a2a55; border-radius: 3px; overflow: hidden;">
+              <img src="${moritaImg}" style="width: 100%; height: 70px; object-fit: cover; display: block;" alt="Anuncio" />
+              <div style="background: #150f22; color: #b0a0d0; font-size: 8px; text-align: center; padding: 4px 3px; font-weight: bold; letter-spacing: 0.02em;">WIKI DE CREEPYPASTAS<br/>ARCHIVO COLABORATIVO</div>
+            </div>
+
+            <div style="border: 1px solid #3a2a55; border-radius: 3px; overflow: hidden;">
+              <img src="${brunoImg}" style="width: 100%; height: 60px; object-fit: cover; display: block;" alt="Anuncio" />
+              <div style="background: #150f22; color: #8a7ab0; font-size: 8px; text-align: center; padding: 3px; font-weight: normal;">Foro de apoyo para editores</div>
+            </div>
+
+            <div style="border: 1px solid #3a2a55; border-radius: 3px; overflow: hidden;">
+              <img src="${gatovichImg}" style="width: 100%; height: 60px; object-fit: cover; display: block;" alt="Anuncio" />
+              <div style="background: #150f22; color: #8a7ab0; font-size: 8px; text-align: center; padding: 3px; font-weight: normal;">Consejería psicológica 24/7</div>
+            </div>
+          </div>
+
+        </div>
+        </div>
       </div>
     `
   },
@@ -671,7 +760,7 @@ const WINDOW_DEFS = {
 
         <!-- Bottom Status Bar -->
         <div style="background: #f0f0f0; border-top: 1px solid #dcdcdc; padding: 4px 8px; font-size: 11px; font-weight: bold; color: #000000; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-          <span>Bruno 🐾 (¡Arrastra un agente aquí para activar el coro!)</span>
+          <span>Bruno 🐾</span>
           <span style="font-weight: normal; color: #333333;">Item 1 of 1</span>
         </div>
 
@@ -909,7 +998,29 @@ function initPlayerUI(container) {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function initPaintCanvas(container, params, paintAudio) {
+function initYoutubeVideo(container) {
+  const video = container.querySelector('.yt-video');
+  const backBtn = container.querySelector('.yt-back');
+  const fwdBtn = container.querySelector('.yt-fwd');
+  const muteBtn = container.querySelector('.yt-mute');
+  if (!video) return;
+
+  backBtn?.addEventListener('click', () => {
+    video.currentTime = Math.max(0, video.currentTime - 10);
+  });
+
+  fwdBtn?.addEventListener('click', () => {
+    const max = isFinite(video.duration) ? video.duration : video.currentTime + 10;
+    video.currentTime = Math.min(max, video.currentTime + 10);
+  });
+
+  muteBtn?.addEventListener('click', () => {
+    video.muted = !video.muted;
+    muteBtn.textContent = video.muted ? '🔇 Activar sonido' : '🔊 Silenciar';
+  });
+}
+
+function initPaintCanvas(container) {
   const canvas = container.querySelector('.paint-canvas');
   const colorPicker = container.querySelector('#paint-color');
   const clearBtn = container.querySelector('#paint-clear');
@@ -922,10 +1033,6 @@ function initPaintCanvas(container, params, paintAudio) {
   let currentTool = 'pencil';
   let startX = 0, startY = 0;
   let snapshot = null;
-
-  // Colores distintos usados desde el último "Limpiar" — le da "riqueza"
-  // al agente (más voces/desafinado, ver triggerBeatAccent en main.js).
-  const usedColors = new Set();
 
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -948,54 +1055,6 @@ function initPaintCanvas(container, params, paintAudio) {
       colorPicker.value = c;
     });
   });
-
-  // Analiza el lienzo completo: además de la densidad de tinta, calcula la
-  // caja delimitadora de todo lo dibujado y qué fracción de esa caja está
-  // rellena. Un trazo delgado (línea, garabato, contorno de círculo) da un
-  // fillRatio bajo; una mancha o forma pintada sólida da uno alto. Así el
-  // agente "entiende" si lo que hay es un dibujo suelto o una forma sólida,
-  // en vez de reaccionar igual a cualquier cosa que se dibuje.
-  function analyzeDrawing() {
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imgData.data;
-    let filled = 0;
-    let minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1;
-
-    for (let y = 0; y < canvas.height; y++) {
-      const rowOffset = y * canvas.width;
-      for (let x = 0; x < canvas.width; x++) {
-        const a = data[(rowOffset + x) * 4 + 3];
-        if (a > 10) {
-          filled++;
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-
-    const total = canvas.width * canvas.height;
-    const density = filled / total;
-    let fillRatio = 0;
-    if (filled > 0 && maxX >= minX && maxY >= minY) {
-      const bboxArea = (maxX - minX + 1) * (maxY - minY + 1);
-      fillRatio = filled / bboxArea;
-    }
-
-    params.paint.density = density;
-    params.paint.fillRatio = fillRatio;
-    params.paint.colorCount = usedColors.size;
-  }
-
-  // Actualiza SOLO la posición en vivo del último punto dibujado (barato,
-  // sin volver a escanear el lienzo) — es lo que el agente usa para
-  // "seguir" el trazo mientras se dibuja, como si leyera dónde está la
-  // punta del lápiz ahora mismo.
-  function updateLivePosition(x, y) {
-    params.paint.nx = Math.max(0, Math.min(1, x / canvas.width));
-    params.paint.ny = Math.max(0, Math.min(1, y / canvas.height));
-  }
 
   function hexToRgba(hex) {
     let c = hex.replace('#', '');
@@ -1048,8 +1107,6 @@ function initPaintCanvas(container, params, paintAudio) {
     }
 
     ctx.putImageData(imgData, 0, 0);
-    updateLivePosition(startX, startY);
-    analyzeDrawing();
   }
 
   canvas.addEventListener('mousedown', (e) => {
@@ -1060,25 +1117,13 @@ function initPaintCanvas(container, params, paintAudio) {
 
     const activeColor = colorPicker.value;
 
-    // El lápiz/pincel/goma/figura ES el instrumento: al bajar el mouse se
-    // "ataca" una nota que luego se dobla en vivo mientras te mueves (ver
-    // mousemove) y se suelta al soltar el botón. fill/picker no dibujan en
-    // continuo, así que se resuelven aparte con su propio pulso corto.
-    if (currentTool !== 'fill' && currentTool !== 'picker') {
-      paintAudio?.onStart?.(startX / canvas.width, startY / canvas.height, activeColor, currentTool);
-    }
-
     if (currentTool === 'pencil' || currentTool === 'brush' || currentTool === 'eraser') {
       ctx.beginPath();
       ctx.moveTo(startX, startY);
-      if (currentTool !== 'eraser') usedColors.add(activeColor);
     } else if (currentTool === 'fill') {
-      usedColors.add(activeColor);
       floodFill(startX, startY, activeColor);
       drawing = false;
-      paintAudio?.onFill?.(startX / canvas.width, startY / canvas.height, activeColor);
     } else if (currentTool === 'rect' || currentTool === 'ellipse') {
-      usedColors.add(activeColor);
       snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     } else if (currentTool === 'picker') {
       const p = ctx.getImageData(startX, startY, 1, 1).data;
@@ -1130,37 +1175,23 @@ function initPaintCanvas(container, params, paintAudio) {
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-
-    updateLivePosition(x, y);
-    analyzeDrawing();
-    paintAudio?.onMove?.(params.paint.nx, params.paint.ny, activeColor, currentTool);
   });
 
   window.addEventListener('mouseup', () => {
     if (drawing) {
       drawing = false;
-      analyzeDrawing();
-      paintAudio?.onEnd?.();
     }
   });
 
   clearBtn.addEventListener('click', () => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    usedColors.clear();
-    params.paint.density = 0;
-    params.paint.fillRatio = 0;
-    params.paint.colorCount = 0;
-    params.paint.nx = 0.5;
-    params.paint.ny = 0.5;
-    paintAudio?.onEnd?.();
   });
 }
 
-export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWindowMove, onAgentWindowToggle, onWindowClosed, paintAudio }) {
+export function createLabPanel() {
   const openWindows = new Map();
   let windowCounter = 0;
-  let refreshers = [];
 
   // Taskbar container for open windows
   const taskbarAppsContainer = document.createElement('div');
@@ -1174,34 +1205,23 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     height: 100%;
   `;
 
-  function makeDraggable(el, handle, windowId) {
+  function makeDraggable(el, handle) {
     let dragging = false;
     let offsetX = 0, offsetY = 0;
-    let lastX = 0, lastY = 0;
 
     handle.addEventListener('pointerdown', (e) => {
       if (e.target.tagName === 'BUTTON' || e.target.classList.contains('close-btn') || e.target.classList.contains('min-btn')) return;
+      if (el.dataset.maximized === 'true') return;
       dragging = true;
       bringToFront(el);
       offsetX = e.clientX - el.offsetLeft;
       offsetY = e.clientY - el.offsetTop;
-      lastX = e.clientX;
-      lastY = e.clientY;
     });
 
     window.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       el.style.left = `${e.clientX - offsetX}px`;
       el.style.top = `${e.clientY - offsetY}px`;
-      
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-
-      if (onWindowMove && windowId) {
-        onWindowMove(windowId, dx, dy);
-      }
     });
 
     window.addEventListener('pointerup', () => { dragging = false; });
@@ -1228,6 +1248,7 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
       let startX, startY, startW, startH, startLeft, startTop;
 
       div.addEventListener('pointerdown', (e) => {
+        if (el.dataset.maximized === 'true') return;
         resizing = h.dir;
         bringToFront(el);
         startX = e.clientX;
@@ -1314,9 +1335,15 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     } else {
       el.style.left = `${100 + Math.random() * 100}px`;
       el.style.top = `${80 + Math.random() * 80}px`;
-      if (type === 'google' || type === 'files' || type === 'trash') {
+      if (type === 'files' || type === 'trash') {
         el.style.width = '780px';
         el.style.height = '520px';
+      } else if (type === 'youtube') {
+        el.style.width = '700px';
+        el.style.height = '540px';
+      } else if (type === 'firefox') {
+        el.style.width = '840px';
+        el.style.height = '560px';
       } else if (type === 'player') {
         el.style.width = '640px';
         el.style.height = '420px';
@@ -1362,12 +1389,31 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
       padding: 0;
     `;
 
+    const maxBtn = document.createElement('button');
+    maxBtn.className = 'max-btn';
+    maxBtn.textContent = '🗖';
+    maxBtn.title = 'Maximizar';
+    maxBtn.style.cssText = `
+      background: linear-gradient(180deg, #f0f0f0 0%, #d4d4d4 100%);
+      border: 1px solid #707070;
+      border-radius: 2px;
+      width: 16px;
+      height: 14px;
+      font-size: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      padding: 0;
+    `;
+
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn';
     closeBtn.textContent = '✕';
     closeBtn.title = 'Cerrar';
 
-    windowBtnsWrap.append(minBtn, closeBtn);
+    windowBtnsWrap.append(minBtn, maxBtn, closeBtn);
     titleBar.append(windowBtnsWrap);
 
     const content = document.createElement('div');
@@ -1384,14 +1430,17 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     bringToFront(el);
     
     if (!isLab) {
-      makeDraggable(el, titleBar, id);
+      makeDraggable(el, titleBar);
       makeResizableFull(el);
     }
 
     if (type === 'paint') {
-      initPaintCanvas(content, params, paintAudio);
+      initPaintCanvas(content);
+      activateAranavirus();
     } else if (type === 'player') {
       initPlayerUI(content);
+    } else if (type === 'youtube') {
+      initYoutubeVideo(content);
     }
 
     let isMinimized = false;
@@ -1406,7 +1455,6 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
         if (isMinimized) el.style.display = 'none';
       }, 220);
       if (taskbarTab) taskbarTab.style.background = 'linear-gradient(180deg, #254d8c 0%, #133368 100%)';
-      if (onAgentWindowToggle) onAgentWindowToggle(id, false);
     };
 
     const restoreWindow = () => {
@@ -1423,12 +1471,61 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
 
       isMinimized = false;
       if (taskbarTab) taskbarTab.style.background = 'linear-gradient(180deg, #3c72c4 0%, #1c4b9e 100%)';
-      if (onAgentWindowToggle) onAgentWindowToggle(id, true);
+    };
+
+    let isMaximized = false;
+    let preMaxBounds = null;
+
+    const maximizeWindow = () => {
+      if (isMaximized) return;
+      preMaxBounds = {
+        left: el.style.left,
+        top: el.style.top,
+        width: el.style.width,
+        height: el.style.height,
+      };
+      const taskbarH = (bar && bar.offsetHeight) || 30;
+      el.style.left = '0px';
+      el.style.top = '0px';
+      el.style.width = '100vw';
+      el.style.height = `calc(100vh - ${taskbarH}px)`;
+      el.dataset.maximized = 'true';
+      isMaximized = true;
+      maxBtn.textContent = '🗗';
+      maxBtn.title = 'Restaurar';
+      bringToFront(el);
+    };
+
+    const unmaximizeWindow = () => {
+      if (!isMaximized || !preMaxBounds) return;
+      el.style.left = preMaxBounds.left;
+      el.style.top = preMaxBounds.top;
+      el.style.width = preMaxBounds.width;
+      el.style.height = preMaxBounds.height;
+      delete el.dataset.maximized;
+      isMaximized = false;
+      maxBtn.textContent = '🗖';
+      maxBtn.title = 'Maximizar';
+    };
+
+    const toggleMaximize = () => {
+      if (isMaximized) unmaximizeWindow();
+      else maximizeWindow();
     };
 
     minBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       minimizeWindow();
+    });
+
+    maxBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMaximize();
+    });
+
+    titleBar.addEventListener('dblclick', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      toggleMaximize();
     });
 
     closeBtn.addEventListener('click', (e) => {
@@ -1487,7 +1584,6 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     if (entry.taskbarTab) entry.taskbarTab.remove();
     entry.el.remove();
     openWindows.delete(id);
-    if (onWindowClosed) onWindowClosed(id);
   }
 
   function getWindowAt(clientX, clientY) {
@@ -1530,7 +1626,7 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     }
     const content = document.createElement('div');
     labWindowId = openWindow('lab', { title: '⚙️ Panel de control', bodyEl: content, isLab: true, startButtonEl: startBtn });
-    refreshers = buildStartMenuContent(content, { params, onReset, onPreset, onPauseChange });
+    buildStartMenuContent(content);
     labOpen = true;
   }
 
@@ -1577,5 +1673,5 @@ export function createLabPanel({ params, onReset, onPreset, onPauseChange, onWin
     }
   });
 
-  return { getWindowAt, refresh() { for (const item of refreshers) item.refresh(); } };
+  return { getWindowAt };
 }
