@@ -6,6 +6,7 @@ import salonImg from '../SALON.jpg';
 import unoVideo from '../UNO.mp4';
 import ejemploImg from '../EJEMPLO.jpg';
 import { activateAranavirus } from '../simulation/createSimulation.js';
+import { POWERPOINT_BODY, initPowerPoint } from './powerpoint.js';
 
 function buildStartMenuContent(container) {
   container.innerHTML = '';
@@ -138,7 +139,8 @@ const ICON_BADGE_CLASS = {
   gmail: 'icon-badge--gmail',
   gallery: 'icon-badge--gallery',
   messenger: 'icon-badge--messenger',
-  trash: 'icon-badge--trash'
+  trash: 'icon-badge--trash',
+  powerpoint: 'icon-badge--powerpoint'
 };
 
 const WINDOW_DEFS = {
@@ -929,6 +931,11 @@ const WINDOW_DEFS = {
 
       </div>
     `
+  },
+
+  powerpoint: {
+    title: 'PowerPoint', icon: '📊',
+    body: POWERPOINT_BODY
   }
 };
 
@@ -1356,6 +1363,11 @@ export function createLabPanel() {
       } else if (type === 'paint') {
         el.style.width = '640px';
         el.style.height = '480px';
+      } else if (type === 'powerpoint') {
+        el.style.width = `${Math.min(1080, window.innerWidth - 60)}px`;
+        el.style.height = `${Math.min(700, window.innerHeight - 80)}px`;
+        el.style.left = '30px';
+        el.style.top = '20px';
       } else {
         el.style.width = '320px';
         el.style.height = '280px';
@@ -1441,6 +1453,8 @@ export function createLabPanel() {
       initPlayerUI(content);
     } else if (type === 'youtube') {
       initYoutubeVideo(content);
+    } else if (type === 'powerpoint') {
+      initPowerPoint(content);
     }
 
     let isMinimized = false;
