@@ -1,32 +1,28 @@
 import './styles.css';
 import FONDO from './FONDO.jpg';
+import FONDOBLOCKEO from './FONDOBLOCKEO.jpg';
 import brunoImg from './bruno.jpg';
 
 import { createLabPanel } from './ui/labPanel.js';
 import { createLoginScreen } from './ui/loginScreen.js';
+import { createLockScreen } from './ui/lockScreen.js';
 
 // ============================================================
 // Escritorio Frutiger Aero — solo interfaz visual.
 //
-// Los agentes (Kuramoto/three.js), el motor de sonido (Tone.js) y todo
-// el "funcionamiento" que conectaba cada ventana con un agente (arrastrar
-// agentes adentro, desacoplarlos, forzar su sincronía, etc.) se quitaron
-// por completo. Lo único que queda es el escritorio: fondo, iconos,
-// ventanas arrastrables/redimensionables/minimizables y la barra de
-// tareas, todo puramente visual.
+// Flujo:
+//   BLOQUEO (arrastrar hacia arriba) -> CONTRASEÑA -> DESKTOP
 //
-// Antes de llegar al escritorio se muestra una pantalla de contraseña
-// (estilo Windows Vista). El escritorio ya se arma por debajo del
-// overlay de login; al acertar la contraseña, el overlay se cierra con
-// una transición y queda revelado el escritorio.
-//   PANTALLA_CONTRASEÑA -> (contraseña correcta) -> DESKTOP
+// Todo se arma en capas: el escritorio abajo, el login encima y la
+// pantalla de bloqueo hasta arriba. Deslizar el bloqueo revela el login,
+// y acertar la contraseña revela el escritorio.
 // ============================================================
 
 async function main() {
-  // Fondo de escritorio: se inyecta como variable CSS para que el bundler
-  // resuelva la ruta final del asset (hash incluido) y para poder mantener
-  // el resto de capas atmosféricas (scanlines, viñeta) definidas en el CSS.
   document.body.style.setProperty('--wallpaper', `url(${FONDO})`);
+
+  // Fondo de la pantalla de contraseña (inicio de sesión)
+  document.body.style.setProperty('--login-bg', `url(${FONDOBLOCKEO})`);
 
   createLabPanel();
 
@@ -34,6 +30,11 @@ async function main() {
     avatarSrc: brunoImg,
     username: 'peanuts animation club',
     correctPassword: 'miedo',
+  });
+
+  createLockScreen({
+    backgroundSrc: FONDOBLOCKEO,
+    message: '¿Qué hace que una experiencia se sienta diferente a simplemente ver una animación?',
   });
 }
 
